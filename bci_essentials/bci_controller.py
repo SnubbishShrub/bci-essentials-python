@@ -399,6 +399,9 @@ class BciController:
                 if self.__paradigm.classify_each_epoch:
                     success_flag = self.__process_and_classify()
                     if success_flag is False:
+                        # If the processing failed, then there is not enough EEG
+                        self.event_marker_buffer = []
+                        self.event_timestamp_buffer = []
                         break
 
             # TODO
