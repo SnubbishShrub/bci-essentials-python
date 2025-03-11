@@ -262,18 +262,37 @@ def lico(X, y, expansion_factor=3, sum_num=2, shuffle=False):
         Oversampled y.
 
     """
+    # Get only positive class examples
     true_X = X[y == 1]
-
+    
     n_trials, n_channels, n_samples = true_X.shape
     logger.info("Shape of ERPs only: %s", true_X.shape)
-    new_trial = n_trials * np.round(expansion_factor - 1)
-    new_X = np.zeros([new_trial, n_channels, n_samples])
-    for trial in range(n_trials):
+    
+    # Calculate number of new trials needed
+    n_new_trials = int(n_trials * (expansion_factor - 1))
+    new_X = np.zeros([n_new_trials, n_channels, n_samples])
+    
+    # Generate synthetic trials
+    for trial_idx in range(n_new_trials):
+        # For each new trial, create a random combination of existing trials
         for j in range(sum_num):
-            random_epoch = true_X[random.choice(range(n_trials)), :, :]
-            new_X[trial, :, :] += random_epoch / sum_num
-
+            # Select a random positive example
+            random_trial_idx = random.randint(0, n_trials - 1)
+            random_epoch = true_X[random_trial_idx, :, :]
+            # Add it to the new trial (scaled by 1/sum_num)
+            new_X[trial_idx, :, :] += random_epoch / sum_num
+    
+    # Combine original data with synthetic data
     over_X = np.append(X, new_X, axis=0)
-    over_y = np.append(y, np.ones([new_trial]))
-
+    over_y = np.append(y, np.ones([n_new_trials]))
+    
+    # Shuffle the data if requested
+    if shuffle:
+        # Get indices and shuffle them
+        indices = np.arange(len(over_y))
+        np.random.shuffle(indices)
+        # Reorder according to shuffled indices
+        over_X = over_X[indices]
+        over_y = over_y[indices]
+    
     return over_X, over_y
