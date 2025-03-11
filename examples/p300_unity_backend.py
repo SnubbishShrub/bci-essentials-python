@@ -18,10 +18,11 @@ classifier = ErpRgClassifier()  # you can add a subset here
 # Set some settings
 classifier.set_p300_clf_settings(
     n_splits=5,
-    lico_expansion_factor=1,
+    lico_expansion_factor=10,
     oversample_ratio=0,
     undersample_ratio=0,
     covariance_estimator="oas",
+    augmentation_method="lico",  # Choose SMOTE
 )
 
 # Initialize the ERP

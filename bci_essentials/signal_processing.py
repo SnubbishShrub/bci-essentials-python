@@ -18,6 +18,7 @@ import numpy as np
 from scipy import signal
 import random
 from .utils.logger import Logger  # Logger wrapper
+from imblearn.over_sampling import SMOTE
 
 # Instantiate a logger for the module at the default level of logging.INFO
 # Logs to bci_essentials.__module__) where __module__ is the name of the module
@@ -296,3 +297,150 @@ def lico(X, y, expansion_factor=3, sum_num=2, shuffle=False):
         over_y = over_y[indices]
     
     return over_X, over_y
+
+def eeg_smote(X, y, expansion_factor=3, k_neighbors=5, shuffle=False):
+    """Oversampling using SMOTE (Synthetic Minority Over-sampling Technique)
+    
+    Generates synthetic EEG trials for the minority class (typically target/P300 responses).
+    
+    Parameters
+    ----------
+    X : numpy.ndarray
+        Trials of EEG data.
+        3D array containing data with `float` type.
+        shape = (n_trials, n_channels, n_samples)
+    y : numpy.ndarray
+        Labels corresponding to X.
+    expansion_factor : float, *optional*
+        Controls the amount of oversampling for the minority class.
+        - Default is `3`.
+    k_neighbors : int, *optional*
+        Number of nearest neighbors to use for synthetic sample generation.
+        - Default is `5`.
+    shuffle : bool, *optional*
+        Whether to shuffle the final combined dataset.
+        - Default is `False`.
+        
+    Returns
+    -------
+    over_X : numpy.ndarray
+        Oversampled X.
+    over_y : numpy.ndarray
+        Oversampled y.
+    """
+
+    # Get dimensions
+    n_trials, n_channels, n_samples = X.shape
+    
+    # Calculate target number of minority class samples
+    n_minority = sum(y == 1)
+    sampling_strategy = min(expansion_factor, (len(y) - n_minority) / n_minority)
+    
+    # Reshape X to 2D for SMOTE (combine channels and samples)
+    X_reshaped = X.reshape(n_trials, n_channels * n_samples)
+    
+    # Apply SMOTE
+    try:
+        # If not enough minority samples for k_neighbors, reduce k
+        if n_minority <= k_neighbors:
+            k_neighbors = max(1, n_minority - 1)
+            logger.warning(f"Reduced k_neighbors to {k_neighbors} due to small minority class")
+            
+        # Configure and apply SMOTE
+        smote = SMOTE(
+            sampling_strategy="auto",
+            k_neighbors=k_neighbors,
+            random_state=42
+        )
+        X_resampled, y_resampled = smote.fit_resample(X_reshaped, y)
+        
+        # Reshape back to 3D
+        X_resampled = X_resampled.reshape(-1, n_channels, n_samples)
+        
+        # Shuffle if requested
+        if shuffle:
+            indices = np.arange(len(y_resampled))
+            np.random.shuffle(indices)
+            X_resampled = X_resampled[indices]
+            y_resampled = y_resampled[indices]
+        
+        logger.info(f"SMOTE expanded data from {len(y)} to {len(y_resampled)} samples")
+        logger.info(f"New class balance: {sum(y_resampled == 1)}/{len(y_resampled)}")
+        
+        return X_resampled, y_resampled
+        
+    except ValueError as e:
+        logger.error(f"SMOTE failed: {e}. Returning original data.")
+        return X, y
+    
+def random_undersample(X, y, undersample_ratio=0.5, shuffle=True):
+    """Random undersampling for imbalanced datasets.
+    
+    Randomly removes samples from the majority class to achieve desired class balance.
+    
+    Parameters
+    ----------
+    X : numpy.ndarray
+        Trials of EEG data.
+        3D array containing data with `float` type.
+        shape = (n_trials, n_channels, n_samples)
+    y : numpy.ndarray
+        Labels corresponding to X.
+    undersample_ratio : float, *optional*
+        Target ratio of minority:majority samples (0.5 means 1:2 ratio).
+        Higher values mean less undersampling.
+        - Default is `0.5`.
+    shuffle : bool, *optional*
+        Whether to shuffle the final dataset.
+        - Default is `True`.
+        
+    Returns
+    -------
+    under_X : numpy.ndarray
+        Undersampled X.
+    under_y : numpy.ndarray
+        Undersampled y.
+    """
+    # Get current class counts
+    n_minority = sum(y == 1)
+    n_majority = sum(y == 0)
+    
+    if n_minority == 0:
+        logger.warning("No minority class samples. Returning original data.")
+        return X, y
+    
+    # Calculate how many majority samples to keep
+    # undersample_ratio = minority/majority, so majority = minority/undersample_ratio
+    n_majority_keep = min(n_majority, int(n_minority / undersample_ratio))
+    n_majority_remove = n_majority - n_majority_keep
+    
+    if n_majority_remove <= 0:
+        logger.info("No undersampling needed. Current ratio already meets target.")
+        return X, y
+    
+    # Get indices of majority class
+    majority_indices = np.where(y == 0)[0]
+    
+    # Randomly select indices to remove
+    np.random.seed(42)  # For reproducibility
+    remove_indices = np.random.choice(majority_indices, n_majority_remove, replace=False)
+    
+    # Get indices to keep
+    keep_indices = np.array([i for i in range(len(y)) if i not in remove_indices])
+    
+    # Create undersampled dataset
+    under_X = X[keep_indices]
+    under_y = y[keep_indices]
+    
+    # Shuffle if requested
+    if shuffle:
+        indices = np.arange(len(under_y))
+        np.random.shuffle(indices)
+        under_X = under_X[indices]
+        under_y = under_y[indices]
+    
+    logger.info(f"Undersampling removed {n_majority_remove} majority samples")
+    logger.info(f"New class balance: {sum(under_y == 1)}/{len(under_y)} " 
+                f"(ratio: {sum(under_y == 1)/(len(under_y)-sum(under_y == 1)):.3f})")
+    
+    return under_X, under_y

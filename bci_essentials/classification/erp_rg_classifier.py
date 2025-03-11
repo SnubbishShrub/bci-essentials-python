@@ -29,7 +29,7 @@ from ..classification.generic_classifier import (
     Prediction,
     KernelResults,
 )
-from ..signal_processing import lico
+from ..signal_processing import lico, eeg_smote
 from ..channel_selection import channel_selection_by_method
 from ..utils.logger import Logger  # Logger wrapper
 
@@ -50,6 +50,8 @@ class ErpRgClassifier(GenericClassifier):
         random_seed=42,
         covariance_estimator="oas",  # Covariance estimator, see pyriemann Covariances
         remove_flats=True,
+        augmentation_method="lico",
+        smote_k_neighbors=5,
     ):
         """Set P300 Classifier Settings.
 
@@ -92,6 +94,8 @@ class ErpRgClassifier(GenericClassifier):
         self.undersample_ratio = undersample_ratio
         self.random_seed = random_seed
         self.covariance_estimator = covariance_estimator
+        self.augmentation_method = augmentation_method
+        self.smote_k_neighbors = smote_k_neighbors
 
         # Define the classifier
         self.clf = make_pipeline(
@@ -109,7 +113,6 @@ class ErpRgClassifier(GenericClassifier):
         n_splits=2,
         plot_cm=False,
         plot_roc=False,
-        lico_expansion_factor=1,
     ):
         """Fit the model.
 
@@ -196,16 +199,26 @@ class ErpRgClassifier(GenericClassifier):
                     y_train.shape,
                 )
 
-                if sum(y_train) > 2:
-                    if lico_expansion_factor > 1:
-                        X_train, y_train = lico(
-                            X_train,
-                            y_train,
-                            expansion_factor=lico_expansion_factor,
-                            sum_num=2,
-                            shuffle=False,
-                        )
-                        logger.debug("y_train = %s", y_train)
+                if sum(y_train) >= 2:
+                    if self.lico_expansion_factor > 1:
+                        if self.augmentation_method.lower() == "smote":
+                            X_train, y_train = eeg_smote(
+                                X_train,
+                                y_train,
+                                expansion_factor=self.lico_expansion_factor,
+                                k_neighbors=min(sum(y_train)-1, self.smote_k_neighbors),
+                                shuffle=True,
+                            )
+                            logger.debug("Used SMOTE augmentation")
+                        else: # Default to LICO
+                            X_train, y_train = lico(
+                                X_train,
+                                y_train,
+                                expansion_factor=self.lico_expansion_factor,
+                                sum_num=2,
+                                shuffle=False,
+                            )
+                            logger.info("Used LICO augmentation")
 
                 logger.debug(
                     "After LICO:\n\tShape X: %s\n\tShape y: %s",
