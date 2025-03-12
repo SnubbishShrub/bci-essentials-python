@@ -209,8 +209,8 @@ class ErpRgClassifier(GenericClassifier):
                                 k_neighbors=min(sum(y_train)-1, self.smote_k_neighbors),
                                 shuffle=True,
                             )
-                            logger.debug("Used SMOTE augmentation")
-                        elif self.augmentation_method.lower() == "smote": # Default to LICO
+                            logger.info("Used SMOTE augmentation")
+                        elif self.augmentation_method.lower() == "lico": # Default to LICO
                             X_train, y_train = lico(
                                 X_train,
                                 y_train,
@@ -222,7 +222,7 @@ class ErpRgClassifier(GenericClassifier):
 
                 if self.augmentation_method.lower() == "random-undersampling":
                     X_train, y_train = random_undersample(X_train, y_train)
-                    logger.debug("Used random undersampling")
+                    logger.info("Used random undersampling")
 
                 logger.debug(
                     "After LICO:\n\tShape X: %s\n\tShape y: %s",
