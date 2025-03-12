@@ -275,13 +275,22 @@ def lico(X, y, expansion_factor=3, sum_num=2, shuffle=False):
     
     # Generate synthetic trials
     for trial_idx in range(n_new_trials):
+        # Generate random weights
+        weights = np.random.dirichlet(np.ones(sum_num), size=1)[0]
         # For each new trial, create a random combination of existing trials
         for j in range(sum_num):
             # Select a random positive example
             random_trial_idx = random.randint(0, n_trials - 1)
             random_epoch = true_X[random_trial_idx, :, :]
             # Add it to the new trial (scaled by 1/sum_num)
-            new_X[trial_idx, :, :] += random_epoch / sum_num
+            new_X[trial_idx, :, :] += weights[j] * random_epoch
+
+        # Add small noise for variability
+        noise = np.random.normal(0, 0.01, size=new_X[trial_idx, :, :].shape)
+        new_X[trial_idx, :, :] += noise
+
+        # Normalize the new sample
+        new_X[trial_idx, :, :] /= np.linalg.norm(new_X[trial_idx, :, :])
     
     # Combine original data with synthetic data
     over_X = np.append(X, new_X, axis=0)
