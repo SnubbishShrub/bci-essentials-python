@@ -29,7 +29,7 @@ from ..classification.generic_classifier import (
     Prediction,
     KernelResults,
 )
-from ..signal_processing import lico, eeg_smote
+from ..signal_processing import lico, eeg_smote, random_undersample
 from ..channel_selection import channel_selection_by_method
 from ..utils.logger import Logger  # Logger wrapper
 
@@ -199,7 +199,7 @@ class ErpRgClassifier(GenericClassifier):
                     y_train.shape,
                 )
 
-                if sum(y_train) >= 2:
+                if sum(y_train) > 2:
                     if self.lico_expansion_factor > 1:
                         if self.augmentation_method.lower() == "smote":
                             X_train, y_train = eeg_smote(
@@ -210,7 +210,7 @@ class ErpRgClassifier(GenericClassifier):
                                 shuffle=True,
                             )
                             logger.debug("Used SMOTE augmentation")
-                        else: # Default to LICO
+                        elif self.augmentation_method.lower() == "smote": # Default to LICO
                             X_train, y_train = lico(
                                 X_train,
                                 y_train,
@@ -219,6 +219,10 @@ class ErpRgClassifier(GenericClassifier):
                                 shuffle=False,
                             )
                             logger.info("Used LICO augmentation")
+
+                if self.augmentation_method.lower() == "random-undersampling":
+                    X_train, y_train = random_undersample(X_train, y_train)
+                    logger.debug("Used random undersampling")
 
                 logger.debug(
                     "After LICO:\n\tShape X: %s\n\tShape y: %s",

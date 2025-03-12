@@ -373,7 +373,7 @@ def eeg_smote(X, y, expansion_factor=3, k_neighbors=5, shuffle=False):
         logger.error(f"SMOTE failed: {e}. Returning original data.")
         return X, y
     
-def random_undersample(X, y, undersample_ratio=0.5, shuffle=True):
+def random_undersample(X, y, undersample_ratio=0.5, shuffle=True, random_seed=42):
     """Random undersampling for imbalanced datasets.
     
     Randomly removes samples from the majority class to achieve desired class balance.
@@ -422,7 +422,7 @@ def random_undersample(X, y, undersample_ratio=0.5, shuffle=True):
     majority_indices = np.where(y == 0)[0]
     
     # Randomly select indices to remove
-    np.random.seed(42)  # For reproducibility
+    np.random.seed(random_seed)  # For reproducibility
     remove_indices = np.random.choice(majority_indices, n_majority_remove, replace=False)
     
     # Get indices to keep

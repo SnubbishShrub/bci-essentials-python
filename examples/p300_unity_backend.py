@@ -22,7 +22,7 @@ classifier.set_p300_clf_settings(
     oversample_ratio=0,
     undersample_ratio=0,
     covariance_estimator="oas",
-    augmentation_method="lico",  # Choose SMOTE
+    augmentation_method="random-undersampling",  # Choose SMOTE
 )
 
 # Initialize the ERP
