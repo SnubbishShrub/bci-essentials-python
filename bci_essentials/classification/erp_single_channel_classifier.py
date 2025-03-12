@@ -165,7 +165,7 @@ class ErpSingleChannelClassifier(GenericClassifier):
                         The recall of the trained classification model.
 
             """
-            print("X shape: ", X.shape)
+            logger.info("X shape: %s", X.shape)
 
             for train_idx, test_idx in cv.split(X, y):
                 y_train, y_test = y[train_idx], y[test_idx]
