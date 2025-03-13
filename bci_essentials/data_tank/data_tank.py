@@ -5,6 +5,7 @@ from bci_essentials.utils.logger import Logger  # Logger wrapper
 # Logs to bci_essentials.__module__) where __module__ is the name of the module
 logger = Logger(name=__name__)
 
+
 # Will eventually move somewhere else
 class DataTank:
     """
