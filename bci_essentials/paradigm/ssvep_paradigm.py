@@ -1,6 +1,9 @@
 import numpy as np
 
+from bci_essentials.utils.logger import Logger  # Logger wrapper
 from .paradigm import Paradigm
+
+logger = Logger(name=__name__)
 
 
 class SsvepParadigm(Paradigm):
@@ -68,7 +71,8 @@ class SsvepParadigm(Paradigm):
         """
         start_time = timestamps[0] - self.buffer_time
 
-        end_time = timestamps[-1] + float(markers[-1].split(",")[-1]) + self.buffer_time
+        #this previously was indexing at [-1] and not getting the window length (changed to [3])
+        end_time = timestamps[-1] + float(markers[-1].split(",")[3]) + self.buffer_time
 
         return start_time, end_time
 
