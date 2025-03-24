@@ -1,6 +1,9 @@
 import numpy as np
 
+from bci_essentials.utils.logger import Logger  # Logger wrapper
 from .paradigm import Paradigm
+
+logger = Logger(name=__name__)
 
 
 class SsvepParadigm(Paradigm):

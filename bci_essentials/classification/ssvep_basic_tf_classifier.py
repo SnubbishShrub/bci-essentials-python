@@ -81,13 +81,13 @@ class SsvepBasicTrainFreeClassifier(GenericClassifier):
         augmented_X = np.mean(X, axis=1)
 
         # Get the PSD estimate using Welch's method
-        f, Pxx = signal.welch(augmented_X, fs=self.sampling_freq, nperseg=n_samples)
+        f, Pxx = signal.welch(augmented_X, fs=self.sampling_freq, nperseg= n_samples)
 
         # Get a vote for each trial
-        prediction = np.zeros(n_trials)
+        prediction = np.zeros(n_trials) # n = 5 for five markers sent
         for trial in range(n_trials):
             # Get the frequency with the greatest PSD
-            Pxx_of_f_bins = np.zeros(len(self.target_freqs))
+            Pxx_of_f_bins = np.zeros(len(self.target_freqs)) # length = 4
             for i, tf in enumerate(self.target_freqs):
                 # Get the closest frequency bin
                 closest_freq_bin = np.argmin(np.abs(f - tf))
@@ -96,4 +96,8 @@ class SsvepBasicTrainFreeClassifier(GenericClassifier):
 
             prediction[trial] = np.argmax(Pxx_of_f_bins)
 
-        return Prediction(labels=prediction)
+        prediction = prediction.tolist()
+        
+        #testing- going to return a random num between 0 and 3 (for 4 spos)
+        return Prediction([2])
+        #return Prediction(labels=prediction) #this is returning a list of 6
