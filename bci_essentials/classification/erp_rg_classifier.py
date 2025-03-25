@@ -44,6 +44,7 @@ class ErpRgClassifier(GenericClassifier):
     def set_p300_clf_settings(
         self,
         n_splits=3,
+        resampling_method=None,
         lico_expansion_factor=1,
         oversample_ratio=0,
         undersample_ratio=0,
@@ -58,6 +59,9 @@ class ErpRgClassifier(GenericClassifier):
         n_splits : int, *optional*
             Number of folds for cross-validation.
             - Default is `3`.
+        resampling_method : str, *optional*, None
+            Resampling method to use. Options are: INCLUDE FUTURE OPTIONS HERE. 
+            Default is None.
         lico_expansion_factor : int, *optional*
             Linear Combination Oversampling expansion factor, which is the
             factor by which the number of ERPs in the training set will be
@@ -87,6 +91,7 @@ class ErpRgClassifier(GenericClassifier):
 
         """
         self.n_splits = n_splits
+        self.resampling_method = resampling_method
         self.lico_expansion_factor = lico_expansion_factor
         self.oversample_ratio = oversample_ratio
         self.undersample_ratio = undersample_ratio
@@ -106,7 +111,6 @@ class ErpRgClassifier(GenericClassifier):
 
     def fit(
         self,
-        n_splits=2,
         plot_cm=False,
         plot_roc=False,
         lico_expansion_factor=1,
@@ -115,10 +119,6 @@ class ErpRgClassifier(GenericClassifier):
 
         Parameters
         ----------
-        n_splits : int, *optional*
-            Number of folds for cross validation.
-            E.g. how many parts the dataset is divided into and trained/validated.
-            - Default is `2`.
         plot_cm : bool, *optional*
             Whether to plot the confusion matrix during training.
             - Default is `False`.
@@ -142,6 +142,9 @@ class ErpRgClassifier(GenericClassifier):
         logger.info("X shape: %s", self.X.shape)
         logger.info("y shape: %s", self.y.shape)
 
+        # Resample data if needed
+        X_resampled, y_resampled = self.__resample_data()
+
         # Define the strategy for cross validation
         cv = StratifiedKFold(
             n_splits=n_splits, shuffle=True, random_state=self.random_seed
@@ -150,7 +153,140 @@ class ErpRgClassifier(GenericClassifier):
         # Init predictions to all false
         preds = np.zeros(len(self.y))
 
-        def __erp_rg_kernel(X, y):
+        # Check if channel selection is true
+        if self.channel_selection_setup:
+            logger.info("Doing channel selection")
+            logger.debug("Initial subset: %s", self.chs_initial_subset)
+
+            channel_selection_results = channel_selection_by_method(
+                self.__erp_rg_kernel,
+                self.X,
+                self.y,
+                self.channel_labels,  # kernel setup
+                self.chs_method,
+                self.chs_metric,
+                self.chs_initial_subset,  # wrapper setup
+                self.chs_max_time,
+                self.chs_min_channels,
+                self.chs_max_channels,
+                self.chs_performance_delta,  # stopping criterion
+                self.chs_n_jobs,
+            )  # njobs, output messages
+
+            preds = channel_selection_results.best_preds
+            accuracy = channel_selection_results.best_accuracy
+            precision = channel_selection_results.best_precision
+            recall = channel_selection_results.best_recall
+
+            logger.info(
+                "The optimal subset is %s",
+                channel_selection_results.best_channel_subset,
+            )
+
+            self.results_df = channel_selection_results.results_df
+            self.subset = channel_selection_results.best_channel_subset
+            self.subset_defined = True
+            self.clf = channel_selection_results.best_model
+        else:
+            logger.warning("Not doing channel selection")
+            X = self.get_subset(self.X, self.subset, self.channel_labels)
+
+            current_results = self.__erp_rg_kernel(X, self.y)
+            self.clf = current_results.model
+            preds = current_results.preds
+            accuracy = current_results.accuracy
+            precision = current_results.precision
+            recall = current_results.recall
+
+        # Log performance stats
+        # accuracy
+        accuracy = sum(preds == self.y) / len(preds)
+        self.offline_accuracy = accuracy
+        logger.info("Accuracy = %s", accuracy)
+
+        # precision
+        precision = precision_score(self.y, preds)
+        self.offline_precision = precision
+        logger.info("Precision = %s", precision)
+
+        # recall
+        recall = recall_score(self.y, preds)
+        self.offline_recall = recall
+        logger.info("Recall = %s", recall)
+
+        # confusion matrix in command line
+        cm = confusion_matrix(self.y, preds)
+        self.offline_cm = cm
+        logger.info("Confusion matrix:\n%s", cm)
+
+        if plot_cm:
+            cm = confusion_matrix(self.y, preds)
+            ConfusionMatrixDisplay(cm).plot()
+            plt.show()
+
+        if plot_roc:
+            logger.info("Plotting the ROC...")
+            logger.error("Just kidding ROC has not been implemented")
+
+    def predict(self, X):
+        """Predict the class of the data (Unused in this classifier)
+
+        Parameters
+        ----------
+        X : numpy.ndarray
+            3D array where shape = (n_epochs, n_channels, n_samples)
+
+        Returns
+        -------
+        prediction : Prediction
+            Predict object. Contains the predicted labels and and the probability.
+            Because this classifier chooses the P300 object with the highest posterior probability,
+            the probability is only the posterior probability of the chosen object.
+
+        """
+
+        subset_X = self.get_subset(X, self.subset, self.channel_labels)
+
+        # Get posterior probability for each target
+        posterior_prob = self.clf.predict_proba(subset_X)[:, 1]
+
+        label = [int(np.argmax(posterior_prob))]
+        probability = [np.max(posterior_prob)]
+
+        return Prediction(label, probability)
+
+    # TODO implement resampling methods, JIRA ticket: B4K-342
+    def __resample_data(self):
+        """Resample data based on the selected method
+
+        """
+
+        X_resampled = self.X.copy()
+        y_resampled = self.y.copy()
+
+        try:
+            if (self.resampling_method == "lico") and \
+                (self.lico_expansion_factor > 1):
+                # Missing implementation
+                pass
+
+            elif (self.resampling_method == "oversample") and \
+                (self.oversample_ratio > 0):
+                # Missing implementation
+                pass
+
+            elif (self.resampling_method == "undersample") and \
+                (self.undersample_ratio > 0):
+                # Missing implementation
+                pass
+        except Exception as e:
+            logger.error(f"{self.resampling_method.capitalize()} resampling method not implemented")
+            logger.error(e)
+        
+        return X_resampled, y_resampled
+    
+
+    def __erp_rg_kernel(self, X, y):
             """ERP RG kernel.
 
             Parameters
@@ -282,112 +418,10 @@ class ErpRgClassifier(GenericClassifier):
                 logger.debug("real = %s", real[0])
                 logger.debug("prediction = %s", prediction)
 
-            model = self.clf
+                model = self.clf
 
-            accuracy = sum(preds == self.y) / len(preds)
-            precision = precision_score(self.y, preds)
-            recall = recall_score(self.y, preds)
+                accuracy = sum(preds == self.y) / len(preds)
+                precision = precision_score(self.y, preds)
+                recall = recall_score(self.y, preds)
 
-            return KernelResults(model, preds, accuracy, precision, recall)
-
-        # Check if channel selection is true
-        if self.channel_selection_setup:
-            logger.info("Doing channel selection")
-            logger.debug("Initial subset: %s", self.chs_initial_subset)
-
-            channel_selection_results = channel_selection_by_method(
-                __erp_rg_kernel,
-                self.X,
-                self.y,
-                self.channel_labels,  # kernel setup
-                self.chs_method,
-                self.chs_metric,
-                self.chs_initial_subset,  # wrapper setup
-                self.chs_max_time,
-                self.chs_min_channels,
-                self.chs_max_channels,
-                self.chs_performance_delta,  # stopping criterion
-                self.chs_n_jobs,
-            )  # njobs, output messages
-
-            preds = channel_selection_results.best_preds
-            accuracy = channel_selection_results.best_accuracy
-            precision = channel_selection_results.best_precision
-            recall = channel_selection_results.best_recall
-
-            logger.info(
-                "The optimal subset is %s",
-                channel_selection_results.best_channel_subset,
-            )
-
-            self.results_df = channel_selection_results.results_df
-            self.subset = channel_selection_results.best_channel_subset
-            self.subset_defined = True
-            self.clf = channel_selection_results.best_model
-        else:
-            logger.warning("Not doing channel selection")
-            X = self.get_subset(self.X, self.subset, self.channel_labels)
-
-            current_results = __erp_rg_kernel(X, self.y)
-            self.clf = current_results.model
-            preds = current_results.preds
-            accuracy = current_results.accuracy
-            precision = current_results.precision
-            recall = current_results.recall
-
-        # Log performance stats
-        # accuracy
-        accuracy = sum(preds == self.y) / len(preds)
-        self.offline_accuracy = accuracy
-        logger.info("Accuracy = %s", accuracy)
-
-        # precision
-        precision = precision_score(self.y, preds)
-        self.offline_precision = precision
-        logger.info("Precision = %s", precision)
-
-        # recall
-        recall = recall_score(self.y, preds)
-        self.offline_recall = recall
-        logger.info("Recall = %s", recall)
-
-        # confusion matrix in command line
-        cm = confusion_matrix(self.y, preds)
-        self.offline_cm = cm
-        logger.info("Confusion matrix:\n%s", cm)
-
-        if plot_cm:
-            cm = confusion_matrix(self.y, preds)
-            ConfusionMatrixDisplay(cm).plot()
-            plt.show()
-
-        if plot_roc:
-            logger.info("Plotting the ROC...")
-            logger.error("Just kidding ROC has not been implemented")
-
-    def predict(self, X):
-        """Predict the class of the data (Unused in this classifier)
-
-        Parameters
-        ----------
-        X : numpy.ndarray
-            3D array where shape = (n_epochs, n_channels, n_samples)
-
-        Returns
-        -------
-        prediction : Prediction
-            Predict object. Contains the predicted labels and and the probability.
-            Because this classifier chooses the P300 object with the highest posterior probability,
-            the probability is only the posterior probability of the chosen object.
-
-        """
-
-        subset_X = self.get_subset(X, self.subset, self.channel_labels)
-
-        # Get posterior probability for each target
-        posterior_prob = self.clf.predict_proba(subset_X)[:, 1]
-
-        label = [int(np.argmax(posterior_prob))]
-        probability = [np.max(posterior_prob)]
-
-        return Prediction(label, probability)
+                return KernelResults(model, preds, accuracy, precision, recall)
