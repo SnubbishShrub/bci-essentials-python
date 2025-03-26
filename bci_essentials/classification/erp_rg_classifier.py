@@ -6,10 +6,8 @@ approach.
 """
 
 # Stock libraries
-import random
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.metrics import (
     confusion_matrix,
@@ -17,19 +15,18 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     roc_auc_score,
+    make_scorer,
 )
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from pyriemann.estimation import XdawnCovariances
+from sklearn.pipeline import Pipeline
 from pyriemann.tangentspace import TangentSpace
+from pyriemann.estimation import XdawnCovariances
 from pyriemann.channelselection import FlatChannelRemover
-from scipy.optimize import brute
-from itertools import product
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 # Import bci_essentials modules and methods
 from ..classification.generic_classifier import (
     GenericClassifier,
     Prediction,
-    KernelResults,
 )
 from ..signal_processing import lico, random_oversampling, random_undersampling
 from ..channel_selection import channel_selection_by_method
@@ -96,16 +93,28 @@ class ErpRgClassifier(GenericClassifier):
         self.undersample_ratio = undersample_ratio
         self.random_seed = random_seed
 
-        # Define the classifier
-        self.clf = make_pipeline(
-            XdawnCovariances(),
-            TangentSpace(),
-            LinearDiscriminantAnalysis(),
-        )
-
+        # # Create steps list with proper formatting
+        steps = []
         if remove_flats:
-            rf = FlatChannelRemover()
-            self.clf.steps.insert(0, ["Remove Flat Channels", rf])
+            steps.append(('remove_flats', FlatChannelRemover()))
+        
+        steps.extend([
+            ('xdawn', XdawnCovariances()),
+            ('tangent', TangentSpace()),
+            ('lda', LinearDiscriminantAnalysis())
+        ])
+
+        # Create pipeline
+        self.clf = Pipeline(steps)
+
+        # Update parameter grid to match new step names
+        self.param_grid = {
+            'xdawn__nfilter': [2, 3, 4],
+            'xdawn__estimator': ['oas', 'scm', 'lwf'],
+            'tangent__metric': ['riemann'],
+            'lda__solver': ['lsqr', 'eigen'],
+            'lda__shrinkage': np.linspace(0.1, 0.9, 5)
+        }
 
 
     def fit(
@@ -140,7 +149,7 @@ class ErpRgClassifier(GenericClassifier):
         # Optimize hyperparameters with cross-validation
         self.__optimize_hyperparameters()
 
-        # Final training with the best hyperparameters
+        # Fit the model with complete data and optimized hyperparameters
         self.clf.fit(self.X, self.y)
 
         # Get predictions for final model
@@ -217,17 +226,17 @@ class ErpRgClassifier(GenericClassifier):
         try:
             if (self.resampling_method == "lico") and \
                 (self.lico_expansion_factor > 1):
-                # Missing implementation
+                [X_resampled, y_resampled] = lico(self.X, self.y, self.lico_expansion_factor)
                 pass
 
             elif (self.resampling_method == "oversample") and \
                 (self.oversample_ratio > 0):
-                # Missing implementation
+                [X_resampled, y_resampled] = random_oversampling(self.X, self.y, self.oversample_ratio)
                 pass
 
             elif (self.resampling_method == "undersample") and \
                 (self.undersample_ratio > 0):
-                # Missing implementation
+                [X_resampled, y_resampled] = random_undersampling(self.X, self.y, self.undersample_ratio)
                 pass
 
             logger.info(f"Resampling  with {self.resampling_method} done")
@@ -251,37 +260,35 @@ class ErpRgClassifier(GenericClassifier):
         
         """
 
-        # Define parameter grid
-        param_grid = {
-            'xdawncovariances__nfilter': [1, 2, 3, 4, 5, 6, 8],
-            'xdawncovariances__estimator': ['oas', 'scm', 'lwf'],
-            'tangentspace__metric': ['riemann'],
-            'lineardiscriminantanalysis__solver': ['svd', 'lsqr', 'eigen'],
-            'lineardiscriminantanalysis__shrinkage': np.linspace(0.0, 1.0, 6)
-        }
-
          # Perform cross-validation
         cv = StratifiedKFold(
             n_splits=self.n_splits,
             shuffle=True,
             random_state=self.random_seed
         )
+
+        # Create custom scorer function
+        custom_scorer = make_scorer(
+            self._valid_roc_auc,
+            needs_proba=True,
+            greater_is_better=True
+        )
         
         # Create GridSearchCV object
         grid_search = GridSearchCV(
             estimator=self.clf,
-            param_grid=param_grid,
+            param_grid=self.param_grid,
             cv=cv,
             n_jobs=-1,
             verbose=1,
-            scoring=["accuracy", "roc_auc"],
-            refit="roc_auc"
+            scoring=custom_scorer,
+            refit=True
         )
 
-        # Ensure data is finite before fitting
-        if not np.all(np.isfinite(self.X)):
-            logger.warning("Input data contains non-finite values")
-            self.X = np.nan_to_num(self.X)  # Replace non-finite values
+        # # Ensure data is finite before fitting
+        # if not np.all(np.isfinite(self.X)):
+        #     logger.warning("Input data contains non-finite values")
+        #     self.X = np.nan_to_num(self.X)  # Replace non-finite values
 
         logger.info("Starting grid search optimization...")
         grid_search.fit(self.X, self.y)
@@ -294,3 +301,34 @@ class ErpRgClassifier(GenericClassifier):
         self.clf.set_params(**best_params)
         logger.info(f"Best parameters found: {best_params}")
         logger.info(f"Best CV score: {best_score:0.3f}")
+
+    def _valid_roc_auc(self, y_true, y_pred, **kwargs):
+        """Calculate the ROC AUC score for the classifier.
+
+        Parameters
+        ----------
+        y_true : numpy.ndarray
+            True labels.
+        y_pred : numpy.ndarray
+            Predicted labels.
+        **kwargs : dict
+            Additional keyword arguments passed by make_scorer.
+
+        Returns
+        -------
+        roc_auc : float
+            ROC AUC score.
+
+        """
+        try:
+            # Check if we have both classes in the fold
+            if len(np.unique(y_true)) < 2:
+                logger.warning("Fold contains only one class")
+                return 0.5
+            
+            return roc_auc_score(y_true, y_pred)
+        
+        except Exception as e:
+            logger.warning(f"ROC AUC calculation failed: {e}")
+            return 0.5
+
