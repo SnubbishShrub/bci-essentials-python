@@ -113,7 +113,7 @@ class ErpRgClassifier(GenericClassifier):
             'xdawn__estimator': ['oas', 'scm', 'lwf'],
             'tangent__metric': ['riemann'],
             'lda__solver': ['lsqr', 'eigen'],
-            'lda__shrinkage': np.linspace(0.1, 0.9, 5)
+            'lda__shrinkage': np.linspace(0.3, 0.7, 5)
         }
 
 
@@ -270,7 +270,7 @@ class ErpRgClassifier(GenericClassifier):
         # Create custom scorer function
         custom_scorer = make_scorer(
             self._valid_roc_auc,
-            needs_proba=True,
+            response_method="predict_proba",
             greater_is_better=True
         )
         
@@ -285,11 +285,7 @@ class ErpRgClassifier(GenericClassifier):
             refit=True
         )
 
-        # # Ensure data is finite before fitting
-        # if not np.all(np.isfinite(self.X)):
-        #     logger.warning("Input data contains non-finite values")
-        #     self.X = np.nan_to_num(self.X)  # Replace non-finite values
-
+        # Start grid search optimization
         logger.info("Starting grid search optimization...")
         grid_search.fit(self.X, self.y)
 
@@ -301,6 +297,7 @@ class ErpRgClassifier(GenericClassifier):
         self.clf.set_params(**best_params)
         logger.info(f"Best parameters found: {best_params}")
         logger.info(f"Best CV score: {best_score:0.3f}")
+
 
     def _valid_roc_auc(self, y_true, y_pred, **kwargs):
         """Calculate the ROC AUC score for the classifier.
@@ -331,4 +328,3 @@ class ErpRgClassifier(GenericClassifier):
         except Exception as e:
             logger.warning(f"ROC AUC calculation failed: {e}")
             return 0.5
-
