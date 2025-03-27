@@ -40,7 +40,6 @@ logger = Logger(name=__name__)
 class ErpRgClassifier(GenericClassifier):
     """ERP RG Classifier class (*inherits from `GenericClassifier`*)."""
 
-
     def set_p300_clf_settings(
         self,
         n_splits=3,
@@ -59,7 +58,7 @@ class ErpRgClassifier(GenericClassifier):
             Number of folds for cross-validation.
             - Default is `3`.
         resampling_method : str, *optional*, None
-            Resampling method to use. Options are: INCLUDE FUTURE OPTIONS HERE. 
+            Resampling method to use ["lico", "oversample", "undersample"].
             Default is None.
         lico_expansion_factor : int, *optional*
             Linear Combination Oversampling expansion factor, which is the
@@ -96,26 +95,27 @@ class ErpRgClassifier(GenericClassifier):
         # # Create steps list with proper formatting
         steps = []
         if remove_flats:
-            steps.append(('remove_flats', FlatChannelRemover()))
-        
-        steps.extend([
-            ('xdawn', XdawnCovariances()),
-            ('tangent', TangentSpace()),
-            ('lda', LinearDiscriminantAnalysis())
-        ])
+            steps.append(("remove_flats", FlatChannelRemover()))
+
+        steps.extend(
+            [
+                ("xdawn", XdawnCovariances()),
+                ("tangent", TangentSpace()),
+                ("lda", LinearDiscriminantAnalysis()),
+            ]
+        )
 
         # Create pipeline
         self.clf = Pipeline(steps)
 
-        # Update parameter grid to match new step names
+        # Hyperparameters to be optimized
         self.param_grid = {
             "xdawn__nfilter": [2, 3, 4],
-            "xdawn__estimator": ['oas', 'lwf'],
-            "tangent__metric": ['riemann'],
-            "lda__solver": ['lsqr', 'eigen'],
-            "lda__shrinkage": np.linspace(0.5, 0.9, 5)
+            "xdawn__estimator": ["oas", "lwf"],
+            "tangent__metric": ["riemann"],
+            "lda__solver": ["lsqr", "eigen"],
+            "lda__shrinkage": np.linspace(0.5, 0.9, 5),
         }
-
 
     def fit(
         self,
@@ -149,45 +149,44 @@ class ErpRgClassifier(GenericClassifier):
         # Optimize hyperparameters with cross-validation
         self.__optimize_hyperparameters()
 
-        # Fit the model with complete data and optimized hyperparameters
+        # Fit the model with the complete dataset and optimized hyperparameters
         self.clf.fit(self.X, self.y)
 
         # Get predictions for final model
         y_pred = self.clf.predict(self.X)
         y_pred_proba = self.clf.predict_proba(self.X)[:, 1]
 
-        # Calculate metrics
+        # Calculate training metrics of final model
         acc = sum(y_pred == self.y) / len(self.y)
         prec = precision_score(self.y, y_pred)
         rec = recall_score(self.y, y_pred)
-        
+
         try:
             roc_auc = roc_auc_score(self.y, y_pred_proba)
             logger.info(f"ROC AUC Score: {roc_auc:0.3f}")
         except:
             logger.warning("Could not calculate ROC AUC score")
 
-        # Display confusion matrix
+        # Display training confusion matrix
         cm = confusion_matrix(self.y, y_pred)
         if plot_cm:
             disp = ConfusionMatrixDisplay(confusion_matrix=cm)
             disp.plot()
-            plt.title("Confusion Matrix - Best Model")
+            plt.title("Training confusion matrix")
 
         if plot_roc:
-            #TODO Implementation missing
+            # TODO Implementation missing
             pass
-        
-        # Log all metrics
-        logger.info("Final Model Performance Metrics:")
+
+        # Log training metrics
+        logger.info("Final model training performance metrics:")
         logger.info(f"Accuracy: {acc:0.3f}")
         logger.info(f"Precision: {prec:0.3f}")
         logger.info(f"Recall: {rec:0.3f}")
         logger.info(f"Confusion Matrix:\n{cm}")
 
-
     def predict(self, X):
-        """Predict the class of the data (Unused in this classifier)
+        """Predict the class of the data
 
         Parameters
         ----------
@@ -213,30 +212,34 @@ class ErpRgClassifier(GenericClassifier):
 
         return Prediction(label, probability)
 
-
-    # TODO implement resampling methods, JIRA ticket: B4K-342
+    # TODO implement additional resampling methods, JIRA ticket: B4K-342
     def __resample_data(self):
-        """Resample data based on the selected method
-
-        """
+        """Resample data based on the selected method"""
 
         X_resampled = self.X.copy()
         y_resampled = self.y.copy()
 
         try:
-            if (self.resampling_method == "lico") and \
-                (self.lico_expansion_factor > 1):
-                [X_resampled, y_resampled] = lico(self.X, self.y, self.lico_expansion_factor)
+            if (self.resampling_method == "lico") and (self.lico_expansion_factor > 1):
+                [X_resampled, y_resampled] = lico(
+                    self.X, self.y, self.lico_expansion_factor
+                )
                 pass
 
-            elif (self.resampling_method == "oversample") and \
-                (self.oversample_ratio > 0):
-                [X_resampled, y_resampled] = random_oversampling(self.X, self.y, self.oversample_ratio)
+            elif (self.resampling_method == "oversample") and (
+                self.oversample_ratio > 0
+            ):
+                [X_resampled, y_resampled] = random_oversampling(
+                    self.X, self.y, self.oversample_ratio
+                )
                 pass
 
-            elif (self.resampling_method == "undersample") and \
-                (self.undersample_ratio > 0):
-                [X_resampled, y_resampled] = random_undersampling(self.X, self.y, self.undersample_ratio)
+            elif (self.resampling_method == "undersample") and (
+                self.undersample_ratio > 0
+            ):
+                [X_resampled, y_resampled] = random_undersampling(
+                    self.X, self.y, self.undersample_ratio
+                )
                 pass
 
             logger.info(f"Resampling  with {self.resampling_method} done")
@@ -244,36 +247,33 @@ class ErpRgClassifier(GenericClassifier):
             logger.info(f"y_resampled shape: {y_resampled.shape}")
 
         except Exception as e:
-            logger.error(f"{self.resampling_method.capitalize()} resampling method failed")
+            logger.error(
+                f"{self.resampling_method.capitalize()} resampling method failed"
+            )
             logger.error(e)
-        
-        return X_resampled, y_resampled
 
+        return X_resampled, y_resampled
 
     def __optimize_hyperparameters(self):
         """Optimize hyperparameters with cross-validation using brute force grid search
-        
+
         Returns
         -------
         `None`
             Model with best hyperparameters to be used in `predict()`.
-        
+
         """
 
-         # Perform cross-validation
+        # Perform cross-validation
         cv = StratifiedKFold(
-            n_splits=self.n_splits,
-            shuffle=True,
-            random_state=self.random_seed
+            n_splits=self.n_splits, shuffle=True, random_state=self.random_seed
         )
 
         # Create custom scorer function
         custom_scorer = make_scorer(
-            self._valid_roc_auc,
-            response_method="predict_proba",
-            greater_is_better=True
+            self._valid_roc_auc, response_method="predict_proba", greater_is_better=True
         )
-        
+
         # Create GridSearchCV object
         grid_search = GridSearchCV(
             estimator=self.clf,
@@ -282,7 +282,7 @@ class ErpRgClassifier(GenericClassifier):
             n_jobs=-1,
             verbose=1,
             scoring=custom_scorer,
-            refit=True
+            refit=True,
         )
 
         # Start grid search optimization
@@ -298,9 +298,11 @@ class ErpRgClassifier(GenericClassifier):
         logger.info(f"Best parameters found: {best_params}")
         logger.info(f"Best CV score: {best_score:0.3f}")
 
-
     def _valid_roc_auc(self, y_true, y_pred, **kwargs):
         """Calculate the ROC AUC score for the classifier.
+        This method is used because the stock `roc_auc_score` function
+        does not handle the case where one class is missing in the fold.
+        This method will return 0.5 in that case.
 
         Parameters
         ----------
@@ -322,9 +324,9 @@ class ErpRgClassifier(GenericClassifier):
             if len(np.unique(y_true)) < 2:
                 logger.warning("Fold contains only one class")
                 return 0.5
-            
+
             return roc_auc_score(y_true, y_pred)
-        
+
         except Exception as e:
             logger.warning(f"ROC AUC calculation failed: {e}")
             return 0.5
