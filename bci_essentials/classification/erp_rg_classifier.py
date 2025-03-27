@@ -109,11 +109,11 @@ class ErpRgClassifier(GenericClassifier):
 
         # Update parameter grid to match new step names
         self.param_grid = {
-            'xdawn__nfilter': [2, 3, 4],
-            'xdawn__estimator': ['oas', 'scm', 'lwf'],
-            'tangent__metric': ['riemann'],
-            'lda__solver': ['lsqr', 'eigen'],
-            'lda__shrinkage': np.linspace(0.3, 0.7, 5)
+            "xdawn__nfilter": [2, 3, 4],
+            "xdawn__estimator": ['oas', 'lwf'],
+            "tangent__metric": ['riemann'],
+            "lda__solver": ['lsqr', 'eigen'],
+            "lda__shrinkage": np.linspace(0.5, 0.9, 5)
         }
 
 
