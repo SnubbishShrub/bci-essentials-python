@@ -1,5 +1,5 @@
 import numpy as np
-from bci_essentials.utils.logger import Logger  # Logger wrapper
+from ..utils.logger import Logger  # Logger wrapper
 
 # Instantiate a logger for the module at the default level of logging.INFO
 # Logs to bci_essentials.__module__) where __module__ is the name of the module
@@ -175,6 +175,7 @@ class DataTank:
         if self.epochs.size == 0:
             self.epochs = np.array(X)
             self.labels = np.array(y)
+
         else:
             # Check the size of the new data
             if X.shape[1:] != self.epochs.shape[1:]:
@@ -200,6 +201,10 @@ class DataTank:
             The labels of the epochs. Shape is (n_epochs).
 
         """
+        if self.epochs.size == 0:
+            logger.warning("Data tank contains no epochs, returning None.")
+            return [], []
+
         if latest:
             # Return only the new data
             first_unsent = self.epochs_sent
