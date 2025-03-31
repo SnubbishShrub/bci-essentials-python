@@ -16,7 +16,6 @@ paradigm = SsvepParadigm()
 data_tank = DataTank()
 
 # Define the classifier    
-# try to write a better CCA classifier
 classifier = SsvepBasicTrainFreeClassifier()
 classifier.set_ssvep_settings(
     sampling_freq=256.0, target_freqs= [7.692307, 10, 12.5, 14.28571])
