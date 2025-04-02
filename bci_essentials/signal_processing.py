@@ -212,8 +212,8 @@ def construct_filter_bank(cutoff_freqs, fsample, filter_order):
 
     Parameters
     ----------
-    target_freqs : array-like
-        Target frequencies for SSVEP detection.
+    cutoff_freqs : array-like
+        Cutoff frequencies for the filter bank [Hz].
         Should be [n_filters, 2]. Where the first column is the low-cutoff
         frequency and the second column is the high-cutoff frequency.
     fsample : float
@@ -223,13 +223,13 @@ def construct_filter_bank(cutoff_freqs, fsample, filter_order):
 
     Returns
     -------
-    filter_bank : list of `ndarray`
-        List of filter coefficients for each target frequency.
+    fb_coefficients : np.ndarray
+        Array of  filter coefficients for each target frequency.
 
     """
     # Pre-allocate filter bank array
     n_filters = len(cutoff_freqs)
-    filter_bank = np.zeros((n_filters, 6, filter_order + 1))  # SOS format is 6 x (order + 1)
+    fb_coefficients = np.zeros((n_filters, 6, filter_order + 1))  # SOS format is 6 x (order + 1)
     
     # Normalize frequencies
     nyq = fsample / 2
@@ -237,19 +237,58 @@ def construct_filter_bank(cutoff_freqs, fsample, filter_order):
     
     # Create filter bank for all frequencies at once
     for f, (f_low, f_high) in enumerate(norm_freqs):
-        filter_bank[f] = signal.butter(
+        fb_coefficients[f] = signal.butter(
             filter_order,
             [f_low, f_high],
             btype='band',
             output='sos'
             )
     
-    return filter_bank
+    return fb_coefficients
 
-def implement_filter_bank(data, f_low, f_high, order, fsample):
+def implement_filter_bank(data, fb_coefficients):
     """ Filter Bank.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Trials of EEG data.
+        3D (or 2D) array containing data with `float` type.
+
+        shape = (n_trials, n_channels, n_samples) or (n_channels, n_samples)
+    fsample : float
+        Sampling rate of signal [Hz].
+    filter_bank : list of `ndarray`
+        List of filter coefficients for each target frequency.
+
+    Returns
+    -------
+    filtered_data : numpy.ndarray
+        Trials of filtered EEG data.
+        3D (or 2D) array containing data with `float` type.
+
+        shape = (n_trials, len(filter_bank), n_channels, n_samples)
+        or ((len_filter_bank) n_channels, n_samples)
+
     """
-    pass
+    # Handle both 2D and 3D inputs
+    is_3d = data.ndim == 3
+    if not is_3d:
+        data = data[np.newaxis, ...]
+    
+    [n_trials, n_channels, n_samples] = data.shape
+    n_filters = fb_coefficients.shape[0]
+    
+    # Pre-allocate output array
+    filtered_data = np.empty((n_trials, n_filters, n_channels, n_samples), dtype=np.float32)
+    
+    # Apply all filters to each trial
+    for trial in range(n_trials):
+        filtered_data[trial] = signal.sosfiltfilt(fb_coefficients, data[trial])
+
+    # Return same dimensions as input + filter bank
+    return filtered_data if is_3d else filtered_data[0]
+
 
 def lico(X, y, expansion_factor=3, sum_num=2, shuffle=False):
     """Linear Combination Oversampling (LiCO)
@@ -537,7 +576,7 @@ def random_undersampling(X, y, ratio):
 
 def ssvep_templates(
     target_freqs,
-    srate=256.0,
+    fsample=256.0,
     n_samples=256,
     n_harmonics=3,
 ):
@@ -564,7 +603,7 @@ def ssvep_templates(
     """
 
         # Create time vector
-    t = np.arange(0, n_samples + 1, dtype=np.float32) / srate
+    t = np.arange(0, n_samples + 1, dtype=np.float32) / fsample
 
     # Create frequency-harmonic combinations
     freqs = target_freqs[:, np.newaxis]  

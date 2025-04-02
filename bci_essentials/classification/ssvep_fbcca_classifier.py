@@ -49,43 +49,59 @@ class SSVEPFBCCClassifier(GenericClassifier):
 
     """
 
-    def sef_ssvep_clf_settings(self, sampling_freq, target_freqs, n_harmonics=1, n_filters=4):
+    def sef_ssvep_clf_settings(self, fsample, target_freqs, n_harmonics=0, filter_bank=None, filter_order=4):
         """Initialize the SSVEP FBCCA Classifier.
 
         Parameters
         ----------
-        sampling_freq : int
-            Sampling frequency of the EEG data.
-        target_freqs : list of `int`
-            List of the target frequencies for SSVEP detection.
+        fsample : float
+            Sampling frequency of the EEG data [Hz].
+        target_freqs : list of `float`
+            List of the target frequencies for SSVEP detection [Hz].
         n_harmonics : int, optional
-            Number of harmonics to use in the filter bank (default is 1).
-        n_filters : int, optional
-            Number of filters in the filter bank (default is 4).
+            Number of harmonics to use in the filter bank (default is 0).
+        filter_bank :array-like **optional**
+            Cutoff frequencies for the filter bank [Hz].
+            Should be [n_filters, 2]. Where the first column is the low-cutoff
+            frequency and the second column is the high-cutoff frequency.
+        filter_order : int, optional
+            Order of the filter (default is 4).
 
+        Returns
+        -------
+        `None`
+            
         """
-        self.sampling_freq = sampling_freq
+        self.fsample = fsample
+        self.filter_bank = filter_bank
         self.target_freqs = target_freqs
         self.n_harmonics = n_harmonics
-        self.n_filters = n_filters
+        self.filter_bank = filter_bank
+        self.filter_order = filter_order
+        self.templates = None   # SSVEP signal templates
+        self.cca_ncomponents = 1  # Number of components for CCA
+        
 
         # Create filter bank
-        self.filter_bank = filter_bank.create_filter_bank(
-            target_freqs, sampling_freq, n_harmonics, n_filters
-        )
-
-        # Initialize CCA object
-        self.cca = CCA(n_components=1)
+        if filter_bank:
+            self.fb_coefficients = construct_filter_bank(
+                self.filter_bank,
+                self.fsample,
+                self.filter_order
+            )
 
         # Create templates for each target frequency
-        self.templates = ssvep_templates.create_templates(
-            target_freqs, sampling_freq, n_harmonics
+        self.templates = ssvep_templates(
+            target_freqs, fsample, n_harmonics
         )
+        
 
-        # Construct filter bank
-        self.filter_bank = filter_bank.create_filter_bank(
-            target_freqs, sampling_freq, n_harmonics, n_filters
-        )
+        # Initialize CCA objects for each target frequency
+        # TODO n_components is a hyper-parameter that might need tuning
+        self.ccas = []
+        for _ in range(len(target_freqs)):
+            self.ccas.append(CCA(n_components=self.cca_ncomponents))
+        
 
     def fit(self):
         """Fit the model.
@@ -100,6 +116,7 @@ class SSVEPFBCCClassifier(GenericClassifier):
 
         """
         pass
+
 
     def predict(self, X):
         """Predict the class labels for the provided data.
@@ -116,23 +133,33 @@ class SSVEPFBCCClassifier(GenericClassifier):
             are not available (empty list).
 
         """
-        # Get the shape of the input data
-        n_trials, n_channels, n_samples = X.shape
+        # Create signal templates for each target frequency
+        # This is only done once to speed up the process
+        if self.templates:
+            self.templates = ssvep_templates(
+                self.target_freqs, self.fsample, self.n_harmonics
+            )
 
-        # Initialize the predictions array
-        probabilities = np.zeros((n_trials, len(self.target_freqs)))
+        # If the nsamples of X changes, we need to re-compute the templates
+        if X.shape[-1] != self.templates.shape[-1]:
+            self.templates = ssvep_templates(
+                self.target_freqs, self.fsample, self.n_harmonics
+            )
 
-        # Apply filter bank to each trial
-        for i in range(n_trials):
-            filtered_data = implement_filter_bank(X[i], self.filter_bank)
+        # Filter the signal if necessary
+        if self.filter_bank:
+            X = implement_filter_bank(X, self.fb_coefficients)
 
-            # Perform CCA for each target frequency
-            for j in range(len(self.target_freqs)):
-                self.cca.fit(filtered_data, self.templates[j])
-                probabilities[i, j] = self.cca.score(filtered_data, self.templates[j])
+        # Compute CCA correlations 
+        correlations = np.zeros(len(self.ccas))
+        for f, cca in enumerate(self.ccas):
+            [X_c, Y_c] = cca.fit_transform(X.T, self.templates[f].T)
 
-        # Get the predicted class labels
-        predicted_labels = np.argmax(probabilities, axis=1)
-
-        # Create and return a Prediction object
+            correlations[f] = np.ndarray(
+                [np.corrcoef(X_c[:, i], Y_c[:, i])[0, 1] for i in range(self.cca_ncomponents)])
+            
+        # Get the predicted labels and probabilities
+        predicted_labels = np.argmax(correlations, axis=0)
+        probabilities = correlations / correlations.sum(axis=0, keepdims=True)
+       
         return Prediction(predicted_labels, probabilities)
