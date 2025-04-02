@@ -207,6 +207,49 @@ def notch(data, f_notch, Q, fsample):
 
     return filtered_data
 
+def construct_filter_bank(cutoff_freqs, fsample, filter_order):
+    """Construct a filter bank for SSVEP detection.
+
+    Parameters
+    ----------
+    target_freqs : array-like
+        Target frequencies for SSVEP detection.
+        Should be [n_filters, 2]. Where the first column is the low-cutoff
+        frequency and the second column is the high-cutoff frequency.
+    fsample : float
+        Sampling rate of signal [Hz].
+    filter_order : int
+        Order of the filter.
+
+    Returns
+    -------
+    filter_bank : list of `ndarray`
+        List of filter coefficients for each target frequency.
+
+    """
+    # Pre-allocate filter bank array
+    n_filters = len(cutoff_freqs)
+    filter_bank = np.zeros((n_filters, 6, filter_order + 1))  # SOS format is 6 x (order + 1)
+    
+    # Normalize frequencies
+    nyq = fsample / 2
+    norm_freqs = cutoff_freqs / nyq
+    
+    # Create filter bank for all frequencies at once
+    for f, (f_low, f_high) in enumerate(norm_freqs):
+        filter_bank[f] = signal.butter(
+            filter_order,
+            [f_low, f_high],
+            btype='band',
+            output='sos'
+            )
+    
+    return filter_bank
+
+def implement_filter_bank(data, f_low, f_high, order, fsample):
+    """ Filter Bank.
+    """
+    pass
 
 def lico(X, y, expansion_factor=3, sum_num=2, shuffle=False):
     """Linear Combination Oversampling (LiCO)
@@ -436,7 +479,6 @@ def random_oversampling(X, y, ratio):
 
     return over_X, over_y
 
-
 def random_undersampling(X, y, ratio):
     """Random Undersampling
 
@@ -491,3 +533,49 @@ def random_undersampling(X, y, ratio):
     under_y = y[all_indices]
 
     return under_X, under_y
+
+
+def ssvep_templates(
+    target_freqs,
+    srate=256.0,
+    n_samples=256,
+    n_harmonics=3,
+):
+    """Generate SSVEP templates with sine-cosine pairs for each target frequency.
+
+    Parameters
+    ----------
+    target_freqs : array-like
+        Target frequencies [Hz].
+    srate : float
+        Sampling rate of signal [Hz].
+    n_samples : int
+        Number of samples in each trial.
+    n_harmonics : int, *optional*
+        Number of harmonics.
+        - Default is `3`.
+    
+    Returns
+    -------
+    templates : numpy.ndarray
+        SSVEP templates with shape (n_targets, 2*n_harmonics, n_samples)
+        where each target frequency has n_harmonics sine-cosine pairs.
+        The harmonics are arranged as [sin(f), cos(f), sin(2f), cos(2f), ...].
+    """
+
+        # Create time vector
+    t = np.arange(0, n_samples + 1, dtype=np.float32) / srate
+
+    # Create frequency-harmonic combinations
+    freqs = target_freqs[:, np.newaxis]  
+    harmonics = np.arange(1, n_harmonics +1) 
+    freq_harm = freqs * harmonics 
+
+    # Compute phase terms using broadcasting
+    phase = 2 * np.pi * t[np.newaxis, :, np.newaxis] * freq_harm[:, np.newaxis, :]
+        
+    # Interleave sin and cos templates
+    n_targets = len(target_freqs)
+    template_signal = np.empty((n_targets, n_samples, 2 * (n_harmonics + 1)), dtype=np.float32)
+    template_signal[:, :, 0::2] = np.sin(phase)
+    template_signal[:, :, 1::2] = np.cos(phase)
