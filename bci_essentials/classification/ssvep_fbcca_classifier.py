@@ -78,18 +78,18 @@ class SsvepFbCcaClassifier(GenericClassifier):
             
         """
         self.fsample = fsample
-        self.filter_bank = filter_bank
+        self.filter_bank = np.array(filter_bank)
+        self.fb_coefficients = None  # Filter bank coefficients
         self.target_freqs = target_freqs
         self.n_samples = n_samples
         self.n_harmonics = n_harmonics
-        self.filter_bank = filter_bank
         self.filter_order = filter_order
         self.templates = None   # SSVEP signal templates
         self.cca_ncomponents = 1  # Number of components for CCA
         self.concatenate_trials = concatenate_trials        
 
         # Create filter bank
-        if filter_bank:
+        if filter_bank is not None:
             self.fb_coefficients = construct_filter_bank(
                 self.filter_bank,
                 self.fsample,
@@ -154,26 +154,44 @@ class SsvepFbCcaClassifier(GenericClassifier):
                 n_samples=X.shape[-1],
                 n_harmonics=self.n_harmonics
             )
+
+            logger.warning(
+                f"SSVEP templates created: {self.templates.shape}. "
+                "If this occurs repeatedly, it may cause performance issues."
+            )
        
         # Filter bank the signal if necessary
-        if self.filter_bank:
+        if self.fb_coefficients is not None:
             X = implement_filter_bank(X, self.fb_coefficients)
 
+            n_filters = X.shape[0]
+            weights = np.array([np.power(i+1, -1.25) + 0.25 for i in range(n_filters)])
+        else:
+            X = X[np.newaxis, ...]  # Add a new axis to make it 3D
+            weights = np.array([1])
+
         # Compute CCA correlations 
-        correlations = np.zeros(len(self.ccas))
-        for f, cca in enumerate(self.ccas):
-            [X_c, Y_c] = cca.fit_transform(X.T, self.templates[f].T)
+        correlations = np.zeros((len(weights), len(self.target_freqs)))
+        
+        for filt in range(len(weights)):
+            for f, cca in enumerate(self.ccas):
+                [X_c, Y_c] = cca.fit_transform(X[filt].T, self.templates[f].T)
 
-            component_correlations = [
-                np.abs(np.corrcoef(X_c[:, c], Y_c[:, c])[0, 1])
-                for c in range(self.cca_ncomponents)
-            ]
+                component_correlations = [
+                    np.abs(np.corrcoef(X_c[:, c], Y_c[:, c])[0, 1])
+                    for c in range(self.cca_ncomponents)
+                ]
 
-            # Keep max correlation across components
-            correlations[f] = np.max(component_correlations)
+                # Keep max correlation across components
+                correlations[filt, f] = np.max(component_correlations)
             
         # Get the predicted labels and probabilities
-        predicted_labels = np.argmax(correlations)
-        probabilities = correlations / correlations.sum()
-       
+        weighted_correlations = np.sum(correlations * weights[:, np.newaxis], axis=0)
+        predicted_labels = np.argmax(weighted_correlations)
+        probabilities = weighted_correlations / weighted_correlations.sum()
+
+        # TODO: EMILY This is the response you need
+        logger.info(
+            f"Predicted labels: {predicted_labels}, Probabilities: {probabilities}"
+        )
         return Prediction(predicted_labels, probabilities)
