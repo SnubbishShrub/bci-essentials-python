@@ -577,7 +577,7 @@ def random_undersampling(X, y, ratio):
 def ssvep_templates(
     target_freqs,
     fsample=256.0,
-    n_samples=256,
+    n_samples=None,
     n_harmonics=3,
 ):
     """Generate SSVEP templates with sine-cosine pairs for each target frequency.
@@ -589,7 +589,7 @@ def ssvep_templates(
     srate : float
         Sampling rate of signal [Hz].
     n_samples : int
-        Number of samples in each trial.
+        Number of samples in each trial (default is `None`).
     n_harmonics : int, *optional*
         Number of harmonics.
         - Default is `3`.
@@ -602,19 +602,58 @@ def ssvep_templates(
         The harmonics are arranged as [sin(f), cos(f), sin(2f), cos(2f), ...].
     """
 
-        # Create time vector
-    t = np.arange(0, n_samples + 1, dtype=np.float32) / fsample
+    if n_samples is None:
+        logger.warning("SSVEP templates not computed because n_samples is None.")
+        return None
+    
+    # Create time vector
+    t = np.arange(0, n_samples, dtype=np.float32) / fsample
 
     # Create frequency-harmonic combinations
-    freqs = target_freqs[:, np.newaxis]  
-    harmonics = np.arange(1, n_harmonics +1) 
-    freq_harm = freqs * harmonics 
+    freqs = target_freqs[:, np.newaxis, np.newaxis]  
+    harmonics = np.arange(1, n_harmonics + 2)[np.newaxis, :, np.newaxis]
 
     # Compute phase terms using broadcasting
-    phase = 2 * np.pi * t[np.newaxis, :, np.newaxis] * freq_harm[:, np.newaxis, :]
+    phase = 2 * np.pi * freqs * harmonics * t[np.newaxis, np.newaxis, :]
         
     # Interleave sin and cos templates
     n_targets = len(target_freqs)
-    template_signal = np.empty((n_targets, n_samples, 2 * (n_harmonics + 1)), dtype=np.float32)
-    template_signal[:, :, 0::2] = np.sin(phase)
-    template_signal[:, :, 1::2] = np.cos(phase)
+    template_signal = np.empty((n_targets, 2 * (n_harmonics + 1), n_samples), dtype=np.float32)
+    template_signal[:, 0::2, :] = np.sin(phase)
+    template_signal[:, 1::2, :] = np.cos(phase)
+
+    return template_signal
+
+def concatenate_trials(X):
+    """Concatenate trials along the time axis using a Hanning window.
+
+    Parameters
+    ----------
+    X : numpy.ndarray
+        Trials of EEG data.
+        3D array containing data with `float` type.
+
+        shape = (n_trials, n_channels, n_samples)
+
+    Returns
+    -------
+    concatenated_X : numpy.ndarray
+        Concatenated trials of EEG data.
+        2D array containing data with `float` type.
+
+        shape = (n_channels, n_trials * n_samples)
+
+    """
+    
+    # Get dimensions
+    [_, n_channels, n_samples] = X.shape
+    
+    # Create and apply Hanning window to all trials at once
+    window = np.hanning(n_samples)
+    windowed_X = X * window[np.newaxis, np.newaxis, :]
+    
+    # Reshape to (n_channels, n_trials * n_samples)
+    # transpose first to get trials sequential for each channel
+    concatenated_X = windowed_X.transpose(1, 0, 2).reshape(n_channels, -1)
+
+    return concatenated_X
