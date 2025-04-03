@@ -252,7 +252,7 @@ def construct_filter_bank(cutoff_freqs, fsample, filter_order):
     """
     # Pre-allocate filter bank array
     n_filters = len(cutoff_freqs)
-    fb_coefficients = np.zeros((n_filters, 6, filter_order + 1))  # SOS format is 6 x (order + 1)
+    fb_coefficients = np.zeros((n_filters, filter_order, 6))
     
     # Normalize frequencies
     nyq = fsample / 2
@@ -260,7 +260,7 @@ def construct_filter_bank(cutoff_freqs, fsample, filter_order):
     
     # Create filter bank for all frequencies at once
     for f, (f_low, f_high) in enumerate(norm_freqs):
-        fb_coefficients[f] = signal.butter(
+        fb_coefficients[f, :, :] = signal.butter(
             filter_order,
             [f_low, f_high],
             btype='band',
@@ -295,7 +295,7 @@ def implement_filter_bank(data, fb_coefficients):
 
     """
     # Handle both 2D and 3D inputs
-    is_3d = data.ndim == 3
+    is_3d = (data.ndim == 3)
     if not is_3d:
         data = data[np.newaxis, ...]
     
@@ -307,7 +307,8 @@ def implement_filter_bank(data, fb_coefficients):
     
     # Apply all filters to each trial
     for trial in range(n_trials):
-        filtered_data[trial] = signal.sosfiltfilt(fb_coefficients, data[trial])
+        for f in range(n_filters):
+            filtered_data[trial, f] = signal.sosfiltfilt(fb_coefficients[f,:,:], data[trial])
 
     # Return same dimensions as input + filter bank
     return filtered_data if is_3d else filtered_data[0]
