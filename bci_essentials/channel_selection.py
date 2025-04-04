@@ -8,7 +8,7 @@ Notes
 The EEG data input for each function is a set of trials. The data must
 be of the shape `n_trials x n_channels x n_samples`, where:
     - n_trials = number of trials
-    - n_channels = number of channels 
+    - n_channels = number of channels
     - n_samples = number of samples
 
 """
@@ -46,7 +46,7 @@ class ChannelSelectionOutput:
         The recall of the trained classification model.
     results_df : pandas.DataFrame
         A dataframe containing the performance metrics at each step.
-    
+
     """
 
     best_channel_subset: list = field(default_factory=list)

@@ -160,7 +160,7 @@ class BciController:
 
     def __pull_marker_data_from_source(self):
         """Pulls marker samples from source, sanity checks and appends to buffer.
-        
+
         Parameters
         ----------
         `None`
@@ -207,7 +207,7 @@ class BciController:
 
     def __pull_eeg_data_from_source(self):
         """Pulls eeg samples from source, sanity checks and appends to buffer
-        
+
         Parameters
         ----------
         `None`

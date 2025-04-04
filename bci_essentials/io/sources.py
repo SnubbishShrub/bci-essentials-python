@@ -44,7 +44,7 @@ class MarkerSource(ABC):
         time_correction : float
             The current time correction estimate (seconds).
             - This is the number that needs to be added to a time tamp that was remotely generated via local_clock() to map it into the local clock domain of the machine.
-            
+
         """
         pass
 

@@ -30,7 +30,7 @@ class XdfMarkerSource(MarkerSource):
 
     def get_markers(self) -> tuple[list[list], list]:
         """Read markers and related timestamps from the XDF file.
-        
+
         Returns
         -------
         markers_from_xdf : tuple[markers, timestamps]

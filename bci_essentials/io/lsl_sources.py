@@ -119,7 +119,7 @@ class LslEegSource(EegSource):
 
 def discover_first_stream(type: str, timeout: float = FOREVER) -> StreamInfo:
     """This helper returns the first stream of the specified type.
-    
+
     If no stream is found, an exception is raised."""
     streams = resolve_byprop("type", type, timeout=timeout)
     return streams[0]
@@ -127,9 +127,9 @@ def discover_first_stream(type: str, timeout: float = FOREVER) -> StreamInfo:
 
 def pull_from_lsl_inlet(inlet: StreamInlet) -> tuple[list[list], list]:
     """StreamInlet.pull_chunk() may return None for samples.
-    
+
     This helper prevents `None` from propagating by converting it into [[]].
-    
+
     If None is detected, the timestamps list is also forced to [].
     """
 
