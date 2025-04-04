@@ -273,8 +273,25 @@ class BciController:
         end_index = np.where(timestamps < eeg_end_time)[0][-1]
 
         time_diffs = np.diff(timestamps[start_index:end_index])
-        if np.any(time_diffs > 2 / self.fsample):
+        
+        # Sonnet 3.5 suggesiton of additional logging
+        max_diff = np.max(time_diffs)
+        expected_diff = 1/self.fsample
+        threshold = 2/self.fsample
+        
+        # if np.any(time_diffs > 2 / self.fsample):
+        # Sonnet 3.5 suggestion of additional logging
+        if np.any(time_diffs > threshold):
             logger.info("Time gaps in EEG data")
+            
+            # Sonnet 3.5 suggestion of additional logging
+            logger.info(f"Expected sample interval: {expected_diff:.6f}s")
+            logger.info(f"Maximum interval found: {max_diff:.6f}s")
+            logger.info(f"Threshold: {threshold:.6f}s")
+            gap_locations = np.where(time_diffs > threshold)[0]
+            logger.info(f"Number of gaps: {len(gap_locations)}")
+            logger.info(f"Gap indices: {gap_locations}")
+            
             return "Skip"
 
         X, y = self.__paradigm.process_markers(
