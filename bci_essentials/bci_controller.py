@@ -286,11 +286,18 @@ class BciController:
             
             # Sonnet 3.5 suggestion of additional logging
             logger.info(f"Expected sample interval: {expected_diff:.6f}s")
-            logger.info(f"Maximum interval found: {max_diff:.6f}s")
             logger.info(f"Threshold: {threshold:.6f}s")
+            logger.info(f"Maximum interval found: {max_diff:.6f}s")
+            
+            # Find gaps and their details
             gap_locations = np.where(time_diffs > threshold)[0]
+            gap_sizes = time_diffs[gap_locations]
+            
             logger.info(f"Number of gaps: {len(gap_locations)}")
-            logger.info(f"Gap indices: {gap_locations}")
+            logger.info("Gap details:")
+            for i, (loc, gap) in enumerate(zip(gap_locations, gap_sizes)):
+                actual_time = timestamps[start_index + loc]
+                logger.info(f"  Gap {i+1}: Index {loc}, Time {actual_time:.3f}s, Size {gap:.6f}s ({gap/expected_diff:.1f}x expected)")
             
             return "Skip"
 
