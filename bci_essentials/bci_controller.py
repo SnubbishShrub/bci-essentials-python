@@ -296,7 +296,7 @@ class BciController:
         if self._messenger is not None:
             self.ping_count += 1
             self._messenger.ping()
-    
+
     # 3. Private methods (double underscore)
     # 3a. Private methods for retrieving data from sources
     def __pull_marker_data_from_source(self):
