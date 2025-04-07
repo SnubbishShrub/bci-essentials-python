@@ -49,6 +49,7 @@ class BciController:
     This class is used for processing of continuous EEG data in trials of a defined length.
     """
 
+    # 0. Special methods (e.g. __init__)
     def __init__(
         self,
         classifier: GenericClassifier,
@@ -136,11 +137,158 @@ class BciController:
         self.n_samples = 0
         self.time_units = ""
 
-    # Get new data from source, whatever it is
+    # 1. Core public API methods
+    def setup(
+        self,
+        online=True,
+        train_complete=False,
+        train_lock=False,
+    ):
+        """Configure processing loop.  This should be called before starting
+        the loop with run() or step().  Calling after will reset the loop state.
+
+        The processing loop reads in EEG and marker data and processes it.
+        The loop can be run in "offline" or "online" modes:
+        - If in `online` mode, then the loop will continuously try to read
+        in data from the `BciController` object and process it. The loop will
+        terminate when `max_loops` is reached, or when manually terminated.
+        - If in `offline` mode, then the loop will read in all of the data
+        at once, process it, and then terminate.
+
+        Parameters
+        ----------
+        online : bool, *optional*
+            Flag to indicate if the data will be processed in `online` mode.
+            - `True`: The data will be processed in `online` mode.
+            - `False`: The data will be processed in `offline` mode.
+            - Default is `True`.
+        train_complete : bool, *optional*
+            Flag to indicate if the classifier has been trained.
+            - `True`: The classifier has been trained.
+            - `False`: The classifier has not been trained.
+            - Default is `False`.
+        train_lock : bool, *optional*
+            Flag to indicate if the classifier is locked (ie. no more training).
+            - `True`: The classifier is locked.
+            - `False`: The classifier is not locked.
+            - Default is `False`.
+
+        Returns
+        -------
+        `None`
+
+        """
+        self.online = online
+        self.train_complete = train_complete
+        self.train_lock = train_lock
+
+        # initialize the numbers of markers and trials to zero
+        self.marker_count = 0
+        self.current_num_trials = 0
+        self.n_trials = 0
+
+        self.num_online_selections = 0
+        self.online_selection_indices = []
+        self.online_selections = []
+
+    def step(self):
+        """Runs a single BciController processing step.
+        See setup() for configuration of processing.
+
+        Parameters
+        ----------
+            None
+
+        Returns
+        ------
+            None
+
+        """
+        # read from sources to get new data. This puts command markers in the marker_data array and
+        # event markers in the event_marker_strings array
+        self._pull_data_from_sources()
+
+        # check if there is an available command marker, if not, break and wait for more data
+        while len(self.marker_timestamps) > self.marker_count:
+            # Get the current marker
+            current_step_marker = self.marker_data[self.marker_count]
+            current_timestamp = self.marker_timestamps[self.marker_count]
+
+            if self._messenger is not None:
+                # send feedback for each marker that you receive
+                self._messenger.marker_received(current_step_marker)
+
+            # If the marker contains a single string, then it is a command marker
+            marker_is_single_string = len(current_step_marker.split(",")) == 1
+            is_event_marker = not marker_is_single_string
+
+            # Handle event markers
+            if is_event_marker:
+                continue_flag = self.__handle_event_marker(
+                    current_step_marker, current_timestamp
+                )
+                if continue_flag is False:
+                    break
+
+            # Handle all other markers
+            method = self.marker_methods.get(current_step_marker)
+            if method:
+                continue_flag = method()
+                if continue_flag is False:
+                    break
+
+            logger.info("Processed Marker: %s", current_step_marker)
+            self.marker_count += 1
+
+    def run(self, max_loops: int = 1000000):
+        """Runs BciController processing in a loop.
+        See setup() for configuration of processing.
+
+        Parameters
+        ----------
+        max_loops : int, *optional*
+            Maximum number of loops to run, default is `1000000`.
+
+        Returns
+        ------
+            None
+
+        """
+
+        # if offline, then all data is already loaded, only need to loop once
+        if self.online is False:
+            self.loops = max_loops - 1
+        else:
+            self.loops = 0
+
+        # Initialize the event marker buffer
+        self.event_marker_buffer = []
+        self.event_timestamp_buffer = []
+
+        # start the main loop, stops after pulling new data, max_loops times
+        while self.loops < max_loops:
+            # print out loop status
+            if self.loops % 100 == 0:
+                logger.debug(self.loops)
+
+            if self.loops == max_loops - 1:
+                logger.debug("last loop")
+
+            # read from sources and process
+            self.step()
+
+            # Wait a short period of time and then try to pull more data
+            if self.online:
+                time.sleep(0.00001)
+
+            self.loops += 1
+
+    # 2. Protected methods (single underscore)
     def _pull_data_from_sources(self):
         """Get pull data from EEG and optionally, the marker source.
         This method will fill up the marker_data, bci_controller and corresponding timestamp arrays.
         """
+        # Get new data from source, whatever it is
         self.__pull_marker_data_from_source()
         self.__pull_eeg_data_from_source()
 
@@ -148,7 +296,9 @@ class BciController:
         if self._messenger is not None:
             self.ping_count += 1
             self._messenger.ping()
-
+    
+    # 3. Private methods (double underscore)
+    # 3a. Private methods for retrieving data from sources
     def __pull_marker_data_from_source(self):
         """Pulls marker samples from source, sanity checks and appends to buffer"""
 
@@ -229,6 +379,37 @@ class BciController:
         # Update latest EEG timestamp
         self.latest_eeg_timestamp = timestamps[-1]
 
+    # 3b. Private methods for data processing and classification
+    def __process_resting_state_data(self):
+        """Handles the resting state data by packaging it and adding it to the data tank.
+
+        Parameters
+        ----------
+            None
+
+        Returns
+        ------
+            continue_flag : bool
+                Flag indicating to continue the while loop in step().
+
+        """
+        (
+            self.bci_controller,
+            self.eeg_timestamps,
+        ) = self.__data_tank.get_raw_eeg()
+
+        resting_state_data = self.__paradigm.package_resting_state_data(
+            self.marker_data,
+            self.marker_timestamps,
+            self.bci_controller,
+            self.eeg_timestamps,
+            self.fsample,
+        )
+
+        self.__data_tank.add_resting_state_data(resting_state_data)
+
+        return True  # Continue processing
+
     def __process_and_classify(self):
         """Process the markers and classify the data.
 
@@ -299,158 +480,8 @@ class BciController:
 
         return "Success"
 
-    def __send_prediction(self, prediction):
-        """Send a prediction to the messenger object."""
-        if self._messenger is not None:
-            self._messenger.prediction(prediction)
-
-    def setup(
-        self,
-        online=True,
-        train_complete=False,
-        train_lock=False,
-    ):
-        """Configure processing loop.  This should be called before starting
-        the loop with run() or step().  Calling after will reset the loop state.
-
-        The processing loop reads in EEG and marker data and processes it.
-        The loop can be run in "offline" or "online" modes:
-        - If in `online` mode, then the loop will continuously try to read
-        in data from the `BciController` object and process it. The loop will
-        terminate when `max_loops` is reached, or when manually terminated.
-        - If in `offline` mode, then the loop will read in all of the data
-        at once, process it, and then terminate.
-
-        Parameters
-        ----------
-        online : bool, *optional*
-            Flag to indicate if the data will be processed in `online` mode.
-            - `True`: The data will be processed in `online` mode.
-            - `False`: The data will be processed in `offline` mode.
-            - Default is `True`.
-        train_complete : bool, *optional*
-            Flag to indicate if the classifier has been trained.
-            - `True`: The classifier has been trained.
-            - `False`: The classifier has not been trained.
-            - Default is `False`.
-        train_lock : bool, *optional*
-            Flag to indicate if the classifier is locked (ie. no more training).
-            - `True`: The classifier is locked.
-            - `False`: The classifier is not locked.
-            - Default is `False`.
-
-        Returns
-        -------
-        `None`
-
-        """
-        self.online = online
-        self.train_complete = train_complete
-        self.train_lock = train_lock
-
-        # initialize the numbers of markers and trials to zero
-        self.marker_count = 0
-        self.current_num_trials = 0
-        self.n_trials = 0
-
-        self.num_online_selections = 0
-        self.online_selection_indices = []
-        self.online_selections = []
-
-    def run(self, max_loops: int = 1000000):
-        """Runs BciController processing in a loop.
-        See setup() for configuration of processing.
-
-        Parameters
-        ----------
-        max_loops : int, *optional*
-            Maximum number of loops to run, default is `1000000`.
-
-        Returns
-        ------
-            None
-
-        """
-
-        # if offline, then all data is already loaded, only need to loop once
-        if self.online is False:
-            self.loops = max_loops - 1
-        else:
-            self.loops = 0
-
-        # Initialize the event marker buffer
-        self.event_marker_buffer = []
-        self.event_timestamp_buffer = []
-
-        # start the main loop, stops after pulling new data, max_loops times
-        while self.loops < max_loops:
-            # print out loop status
-            if self.loops % 100 == 0:
-                logger.debug(self.loops)
-
-            if self.loops == max_loops - 1:
-                logger.debug("last loop")
-
-            # read from sources and process
-            self.step()
-
-            # Wait a short period of time and then try to pull more data
-            if self.online:
-                time.sleep(0.00001)
-
-            self.loops += 1
-
-    def step(self):
-        """Runs a single BciController processing step.
-        See setup() for configuration of processing.
-
-        Parameters
-        ----------
-            None
-
-        Returns
-        ------
-            None
-
-        """
-        # read from sources to get new data. This puts command markers in the marker_data array and
-        # event markers in the event_marker_strings array
-        self._pull_data_from_sources()
-
-        # check if there is an available command marker, if not, break and wait for more data
-        while len(self.marker_timestamps) > self.marker_count:
-            # Get the current marker
-            current_step_marker = self.marker_data[self.marker_count]
-            current_timestamp = self.marker_timestamps[self.marker_count]
-
-            if self._messenger is not None:
-                # send feedback for each marker that you receive
-                self._messenger.marker_received(current_step_marker)
-
-            # If the marker contains a single string, then it is a command marker
-            marker_is_single_string = len(current_step_marker.split(",")) == 1
-            is_event_marker = not marker_is_single_string
-
-            # Handle event markers
-            if is_event_marker:
-                continue_flag = self.__handle_event_marker(
-                    current_step_marker, current_timestamp
-                )
-                if continue_flag is False:
-                    break
-
-            # Handle all other markers
-            method = self.marker_methods.get(current_step_marker)
-            if method:
-                continue_flag = method()
-                if continue_flag is False:
-                    break
-
-            logger.info("Processed Marker: %s", current_step_marker)
-            self.marker_count += 1
-
-    def __process_resting_state_data(self):
-        """Handles the resting state data by packaging it and adding it to the data tank.
+    def __update_and_train_classifier(self):
+        """Updates the classifier if required.
 
         Parameters
         ----------
@@ -460,25 +491,35 @@ class BciController:
         ------
             continue_flag : bool
                 Flag indicating to continue the while loop in step().
-
         """
-        (
-            self.bci_controller,
-            self.eeg_timestamps,
-        ) = self.__data_tank.get_raw_eeg()
+        if self.train_lock is False:
+            # Pull the epochs from the data tank and pass them to the classifier
+            X, y = self.__data_tank.get_epochs(latest=True)
 
-        resting_state_data = self.__paradigm.package_resting_state_data(
-            self.marker_data,
-            self.marker_timestamps,
-            self.bci_controller,
-            self.eeg_timestamps,
-            self.fsample,
-        )
+            # Remove epochs with label -1
+            ind_to_remove = []
+            for i, label in enumerate(y):
+                if label == -1:
+                    ind_to_remove.append(i)
+            X = np.delete(X, ind_to_remove, axis=0)
+            y = np.delete(y, ind_to_remove, axis=0)
 
-        self.__data_tank.add_resting_state_data(resting_state_data)
+            # Check that there are epochs
+            if len(y) > 0:
+                self._classifier.add_to_train(X, y)
 
-        return True  # Continue processing
+            if self._classifier._check_ready_for_fit():
+                self._classifier.fit()
+                self.train_complete = True
 
+        return True
+
+    def __send_prediction(self, prediction):
+        """Send a prediction to the messenger object."""
+        if self._messenger is not None:
+            self._messenger.prediction(prediction)
+
+    # 3c. Private methods for handling trial and events
     def __log_trial_start(self):
         """Logs the start of a trial.
 
@@ -523,40 +564,6 @@ class BciController:
                 return False
 
         return True  # Return True by default if not classifying
-
-    def __update_and_train_classifier(self):
-        """Updates the classifier if required.
-
-        Parameters
-        ----------
-            None
-
-        Returns
-        ------
-            continue_flag : bool
-                Flag indicating to continue the while loop in step().
-        """
-        if self.train_lock is False:
-            # Pull the epochs from the data tank and pass them to the classifier
-            X, y = self.__data_tank.get_epochs(latest=True)
-
-            # Remove epochs with label -1
-            ind_to_remove = []
-            for i, label in enumerate(y):
-                if label == -1:
-                    ind_to_remove.append(i)
-            X = np.delete(X, ind_to_remove, axis=0)
-            y = np.delete(y, ind_to_remove, axis=0)
-
-            # Check that there are epochs
-            if len(y) > 0:
-                self._classifier.add_to_train(X, y)
-
-            if self._classifier._check_ready_for_fit():
-                self._classifier.fit()
-                self.train_complete = True
-
-        return True
 
     def __handle_event_marker(self, marker, timestamp):
         """Processes and classifies event markers.
