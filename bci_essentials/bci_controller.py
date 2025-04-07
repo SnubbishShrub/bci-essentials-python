@@ -514,12 +514,7 @@ class BciController:
 
         return True
 
-    def __send_prediction(self, prediction):
-        """Send a prediction to the messenger object."""
-        if self._messenger is not None:
-            self._messenger.prediction(prediction)
-
-    # 3c. Private methods for handling trial and events
+    # 3c. Private methods for event handling (trial and markers) and messaging
     def __log_trial_start(self):
         """Logs the start of a trial.
 
@@ -598,3 +593,8 @@ class BciController:
                 return False  # Stop processing
 
         return True  # Continue processing
+
+    def __send_prediction(self, prediction):
+        """Send a prediction to the messenger object."""
+        if self._messenger is not None:
+            self._messenger.prediction(prediction)
