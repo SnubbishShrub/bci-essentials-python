@@ -200,6 +200,11 @@ class BciController:
         """Runs a single BciController processing step.
 
         See setup() for configuration of processing.
+        
+        The method processes markers in the following order:
+        1. First checks if the marker is a known command marker from self.marker_methods
+        2. Then checks if it's an event marker (contains commas)
+        3. If neither, logs a warning about unknown marker type
 
         Parameters
         ----------
@@ -210,41 +215,71 @@ class BciController:
         `None`
 
         """
-        # read from sources to get new data. This puts command markers in the marker_data array and
+        # read from sources to get new data. 
+        # This puts command markers in the marker_data array and
         # event markers in the event_marker_strings array
         self._pull_data_from_sources()
 
-        # check if there is an available command marker, if not, break and wait for more data
+        # Process markers while there are unprocessed markers
+        # REMOVE COMMENT: check if there is an available command marker, if not, break and wait for more data
         while len(self.marker_timestamps) > self.marker_count:
             # Get the current marker
-            current_step_marker = self.marker_data[self.marker_count]
-            current_timestamp = self.marker_timestamps[self.marker_count]
+            current_step_marker = self.marker_data[self.marker_count]  # String
+            current_timestamp = self.marker_timestamps[self.marker_count]  # Float
 
+            # ADD COMMENT
             if self._messenger is not None:
                 # send feedback for each marker that you receive
                 self._messenger.marker_received(current_step_marker)
 
-            # If the marker contains a single string, then it is a command marker
-            marker_is_single_string = len(current_step_marker.split(",")) == 1
-            is_event_marker = not marker_is_single_string
-
-            # Handle event markers
-            if is_event_marker:
+            # NEW CODE
+            # Process markers in order specified in the docstrings
+            # First check if it's a known command marker
+            if current_step_marker in self.marker_methods:
+                # If the marker is within the self.marker_methods dictionary, call the corresponding method
+                # continue_flag = self.marker_methods[current_step_marker]()
+                # OR
+                continue_flag = self.__handle_command_marker(current_step_marker)
+                if continue_flag is False:
+                    break
+            # Then check if it's an event marker (contains commas) 
+            elif "," in current_step_marker:
                 continue_flag = self.__handle_event_marker(
                     current_step_marker, current_timestamp
                 )
                 if continue_flag is False:
                     break
-
-            # Handle all other markers
-            method = self.marker_methods.get(current_step_marker)
-            if method:
-                continue_flag = method()
-                if continue_flag is False:
-                    break
+            else:
+                # Log warning for unknown marker types
+                logger.warning("Unknown marker type received: %s", current_step_marker)
 
             logger.info("Processed Marker: %s", current_step_marker)
             self.marker_count += 1
+            
+
+            
+            # OLD CODE
+            # # If the marker contains a single string, then it is a command marker
+            # marker_is_single_string = len(current_step_marker.split(",")) == 1
+            # is_event_marker = not marker_is_single_string
+
+            # # Handle event markers
+            # if is_event_marker:
+            #     continue_flag = self.__handle_event_marker(
+            #         current_step_marker, current_timestamp
+            #     )
+            #     if continue_flag is False:
+            #         break
+
+            # # Handle all other markers
+            # method = self.marker_methods.get(current_step_marker)
+            # if method:
+            #     continue_flag = method()
+            #     if continue_flag is False:
+            #         break
+
+            # logger.info("Processed Marker: %s", current_step_marker)
+            # self.marker_count += 1
 
     def run(self, max_loops: int = 1000000):
         """Runs BciController processing in a loop.
@@ -635,6 +670,25 @@ class BciController:
                 return False  # Stop processing
 
         return True  # Continue processing
+
+    def __handle_command_marker(self, marker: str) -> bool:
+        """Processes a command marker by invoking its associated method.
+
+        Parameters
+        ----------
+        marker : str
+            A command marker string (assumed to be in self.marker_methods).
+
+        Returns
+        -------
+        bool
+            A flag indicating if the processing should continue.
+        """
+        logger.debug("Processing command marker: %s", marker)
+        continue_flag = self.marker_methods[marker]()
+        if continue_flag is False:
+            logger.debug("Command marker '%s' requested to halt further processing", marker)
+        return continue_flag
 
     def __send_prediction(self, prediction):
         """Send a prediction to the messenger object.
