@@ -147,7 +147,7 @@ class BciController:
         train_lock=False,
     ):
         """Configure processing loop.
-        
+
         This should be called before starting the loop with run() or step().
 
         Calling after will reset the loop state.
