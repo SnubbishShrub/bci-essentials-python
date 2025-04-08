@@ -203,11 +203,11 @@ class BciController:
 
         Parameters
         ----------
-            None
+        `None`
 
         Returns
         ------
-            None
+        `None`
 
         """
         # read from sources to get new data. This puts command markers in the marker_data array and
@@ -601,7 +601,12 @@ class BciController:
 
         Parameters
         ----------
-        `None`
+        marker : str
+            Event marker string containing comma-separated values.
+            - Format depends on paradigm implementation.
+        timestamp : float
+            Timestamp of the marker in seconds (after time correction).
+
 
         Returns
         ------
