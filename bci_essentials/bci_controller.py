@@ -67,15 +67,17 @@ class BciController:
         eeg_source : EegSource
             Source of EEG data and timestamps, this could be from a file or headset via LSL, etc.
         marker_source : EegSource
-            Source of Marker/Control data and timestamps, this could be from a file or Unity via
-            LSL, etc.  The default value is None.
+            Source of Marker/Control data and timestamps, this could be from a file or Unity via LSL, etc.
+            - Default is `None`.
         paradigm : Paradigm
             The paradigm used by BciController. This defines the processing and reshaping steps for the EEG data.
         data_tank : DataTank
-            DataTank object to handle the storage of EEG trials and labels.  The default value is None.
+            DataTank object to handle the storage of EEG trials and labels.
+            - Default is `None`.
         messenger: Messenger
             Messenger object to handle events from BciController, ex: acknowledging markers and
-            predictions.  The default value is None.
+            predictions.
+            - Default is `None`.
 
         """
 
@@ -144,8 +146,11 @@ class BciController:
         train_complete=False,
         train_lock=False,
     ):
-        """Configure processing loop.  This should be called before starting
-        the loop with run() or step().  Calling after will reset the loop state.
+        """Configure processing loop.
+        
+        This should be called before starting the loop with run() or step().
+
+        Calling after will reset the loop state.
 
         The processing loop reads in EEG and marker data and processes it.
         The loop can be run in "offline" or "online" modes:
@@ -193,6 +198,7 @@ class BciController:
 
     def step(self):
         """Runs a single BciController processing step.
+
         See setup() for configuration of processing.
 
         Parameters
@@ -242,6 +248,7 @@ class BciController:
 
     def run(self, max_loops: int = 1000000):
         """Runs BciController processing in a loop.
+
         See setup() for configuration of processing.
 
         Parameters
@@ -251,7 +258,7 @@ class BciController:
 
         Returns
         ------
-            None
+        `None`
 
         """
 
@@ -286,6 +293,7 @@ class BciController:
     # 2. Protected methods (single underscore)
     def _pull_data_from_sources(self):
         """Get pull data from EEG and optionally, the marker source.
+
         This method will fill up the marker_data, bci_controller and corresponding timestamp arrays.
 
         Parameters
@@ -414,7 +422,7 @@ class BciController:
 
         Parameters
         ----------
-            None
+        `None`
 
         Returns
         ------
