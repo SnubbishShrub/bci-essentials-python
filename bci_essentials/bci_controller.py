@@ -13,8 +13,7 @@ and classified (using one of the `classification` sub-modules).
 
 Classes
 -------
-- `BciController` : For processing continuous data in trials of a defined
-length.
+- `BciController` : For processing continuous data in trials of a defined length.
 
 """
 
@@ -77,6 +76,7 @@ class BciController:
         messenger: Messenger
             Messenger object to handle events from BciController, ex: acknowledging markers and
             predictions.  The default value is None.
+
         """
 
         # Ensure the incoming dependencies are the right type
@@ -287,6 +287,15 @@ class BciController:
     def _pull_data_from_sources(self):
         """Get pull data from EEG and optionally, the marker source.
         This method will fill up the marker_data, bci_controller and corresponding timestamp arrays.
+
+        Parameters
+        ----------
+        `None`
+
+        Returns
+        -------
+        `None`
+
         """
         # Get new data from source, whatever it is
         self.__pull_marker_data_from_source()
@@ -300,7 +309,17 @@ class BciController:
     # 3. Private methods (double underscore)
     # 3a. Private methods for retrieving data from sources
     def __pull_marker_data_from_source(self):
-        """Pulls marker samples from source, sanity checks and appends to buffer"""
+        """Pulls marker samples from source, sanity checks and appends to buffer.
+
+        Parameters
+        ----------
+        `None`
+
+        Returns
+        -------
+        `None`
+
+        """
 
         # if there isn't a marker source, abort
         if self.__marker_source is None:
@@ -337,7 +356,17 @@ class BciController:
             )
 
     def __pull_eeg_data_from_source(self):
-        """Pulls eeg samples from source, sanity checks and appends to buffer"""
+        """Pulls eeg samples from source, sanity checks and appends to buffer.
+
+        Parameters
+        ----------
+        `None`
+
+        Returns
+        -------
+        `None`
+
+        """
 
         # read in the data
         eeg, timestamps = self.__eeg_source.get_samples()
@@ -389,8 +418,8 @@ class BciController:
 
         Returns
         ------
-            continue_flag : bool
-                Flag indicating to continue the while loop in step().
+        continue_flag : bool
+            Flag indicating to continue the while loop in step().
 
         """
         (
@@ -415,17 +444,16 @@ class BciController:
 
         Parameters
         ----------
-            None
+        `None`
 
         Returns
-        ----------
-            success_string : str
-                String indicating if the processing and classification was successful.
-                Potential values are "Success", "Skip", "Wait".
-
-                "Success": The processing and classification was successful.
-                "Skip": EEG is either absent entirely or contains lost packets.
-                "Wait": The processing is waiting for more data.
+        -------
+        success_string : str
+            String indicating if the processing and classification was successful.
+            Potential values are "Success", "Skip", "Wait".
+            - "Success": The processing and classification was successful.
+            - "Skip": EEG is either absent entirely or contains lost packets.
+            - "Wait": The processing is waiting for more data.
 
         """
 
@@ -485,12 +513,12 @@ class BciController:
 
         Parameters
         ----------
-            None
+        `None`
 
         Returns
-        ------
-            continue_flag : bool
-                Flag indicating to continue the while loop in step().
+        -------
+        continue_flag : bool
+            Flag indicating to continue the while loop in step().
         """
         if self.train_lock is False:
             # Pull the epochs from the data tank and pass them to the classifier
@@ -520,12 +548,12 @@ class BciController:
 
         Parameters
         ----------
-            None
+        `None`
 
         Returns
-        ------
-            continue_flag : bool
-                Flag indicating to continue the while loop in step().
+        -------
+        continue_flag : bool
+            Flag indicating to continue the while loop in step().
 
         """
         logger.debug("Trial started, incrementing marker count and continuing")
@@ -537,13 +565,13 @@ class BciController:
 
         Parameters
         ----------
-            None
+        `None`
 
         Returns
         ------
-            success_flag : bool
-                Flag indicating if the processing and classification was successful.
-                Returns True if not classifying.
+        success_flag : bool
+            Flag indicating if the processing and classification was successful.
+            - Returns `True` if not classifying.
         """
         # If we are classifying based on trials, then process the trial,
         if self.__paradigm.classify_each_trial:
@@ -565,12 +593,13 @@ class BciController:
 
         Parameters
         ----------
-            None
+        `None`
 
         Returns
         ------
-            continue_flag : bool
-                Flag indicating to continue the while loop in step().
+        continue_flag : bool
+            Flag indicating to continue the while loop in step().
+
         """
         # Add the marker to the event marker buffer
         self.event_marker_buffer.append(marker)
@@ -595,6 +624,16 @@ class BciController:
         return True  # Continue processing
 
     def __send_prediction(self, prediction):
-        """Send a prediction to the messenger object."""
+        """Send a prediction to the messenger object.
+
+        Parameters
+        ----------
+        `None`
+
+        Returns
+        -------
+        `None`
+
+        """
         if self._messenger is not None:
             self._messenger.prediction(prediction)
