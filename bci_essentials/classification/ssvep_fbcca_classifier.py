@@ -192,6 +192,6 @@ class SsvepFbCcaClassifier(GenericClassifier):
 
         # TODO: EMILY This is the response you need
         logger.info(
-            f"Predicted labels: {predicted_labels}, Probabilities: {probabilities}"
+            f"Predicted label: {predicted_labels}, Probabilities: {probabilities}"
         )
         return Prediction(predicted_labels, probabilities)
