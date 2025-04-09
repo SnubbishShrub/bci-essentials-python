@@ -200,7 +200,7 @@ class BciController:
         """Runs a single BciController processing step.
 
         See setup() for configuration of processing.
-        
+
         The method processes markers in the following order:
         1. First checks if the marker is a known command marker from self.marker_methods
         2. Then checks if it's an event marker (contains commas)
@@ -215,7 +215,7 @@ class BciController:
         `None`
 
         """
-        # read from sources to get new data. 
+        # read from sources to get new data.
         # This puts command markers in the marker_data array and
         # event markers in the event_marker_strings array
         self._pull_data_from_sources()
@@ -240,24 +240,28 @@ class BciController:
                 # continue_flag = self.marker_methods[current_step_marker]()
                 # OR
                 continue_flag = self.__handle_command_marker(current_step_marker)
-                if continue_flag is False:
-                    break
-            # Then check if it's an event marker (contains commas) 
+                # if continue_flag is False:
+                #     break
+            # Then check if it's an event marker (contains commas)
             elif "," in current_step_marker:
                 continue_flag = self.__handle_event_marker(
                     current_step_marker, current_timestamp
                 )
-                if continue_flag is False:
-                    break
+                # if continue_flag is False:
+                #     break
             else:
                 # Log warning for unknown marker types
                 logger.warning("Unknown marker type received: %s", current_step_marker)
 
-            logger.info("Processed Marker: %s", current_step_marker)
-            self.marker_count += 1
-            
+            # Check if we should continue processing markers in the while loop
+            # if continue_flag is False, then break out of the while loop
+            # else, increment the marker count and processthe next marker
+            if continue_flag is False:
+                break
+            else:
+                logger.info("Processed Marker: %s", current_step_marker)
+                self.marker_count += 1
 
-            
             # OLD CODE
             # # If the marker contains a single string, then it is a command marker
             # marker_is_single_string = len(current_step_marker.split(",")) == 1
@@ -509,7 +513,7 @@ class BciController:
 
         # Check if there is available EEG data
         if len(eeg) == 0:
-            logger.info("No EEG data available")
+            logger.warning("No EEG data available")
             return "Skip"
 
         # If the last timestamp is less than the end time, then we don't have the necessary EEG to process
@@ -519,14 +523,14 @@ class BciController:
         # Check if EEG sampling is continuous over this time period
         start_indices = np.where(timestamps > eeg_start_time)[0]
         if len(start_indices) == 0:
-            logger.info("No timestamps exceed eeg_start_time")
+            logger.warning("No timestamps exceed eeg_start_time")
             return "Skip"
         start_index = start_indices[0]
         end_index = np.where(timestamps < eeg_end_time)[0][-1]
 
         time_diffs = np.diff(timestamps[start_index:end_index])
         if np.any(time_diffs > 2 / self.fsample):
-            logger.info("Time gaps in EEG data")
+            logger.warning("Time gaps in EEG data")
             return "Skip"
 
         X, y = self.__paradigm.process_markers(
@@ -623,7 +627,7 @@ class BciController:
                 logger.debug("Processing of trial not run: waiting for more data")
                 return False
             if success_string == "Skip":
-                logger.info("Processing of trial failed: skipping trial")
+                logger.warning("Processing of trial failed: skipping trial")
                 self.event_marker_buffer = []
                 self.event_timestamp_buffer = []
                 self.marker_count += 1
@@ -662,7 +666,7 @@ class BciController:
                 self.event_timestamp_buffer = []
                 return False  # Stop processing
             elif success_string == "Skip":
-                logger.info("Processing of epoch failed: skipping epoch")
+                logger.warning("Processing of epoch failed: skipping epoch")
                 self.event_marker_buffer = []
                 self.event_timestamp_buffer = []
 
@@ -687,7 +691,8 @@ class BciController:
         logger.debug("Processing command marker: %s", marker)
         continue_flag = self.marker_methods[marker]()
         if continue_flag is False:
-            logger.debug("Command marker '%s' requested to halt further processing", marker)
+            logger.debug("Command marker '%s' set continue_flag to FALSE", marker)
+
         return continue_flag
 
     def __send_prediction(self, prediction):
@@ -703,4 +708,10 @@ class BciController:
 
         """
         if self._messenger is not None:
+            logger.debug("Sending prediction: %s", prediction)
             self._messenger.prediction(prediction)
+        else:
+            logger.error(
+                "Messenger not available (self._messenger is None).\n\tPrediction not sent: %s",
+                prediction,
+            )
