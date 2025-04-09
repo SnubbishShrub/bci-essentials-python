@@ -697,7 +697,13 @@ class BciController:
             logger.debug("Sending prediction: %s", prediction)
             self._messenger.prediction(prediction)
         else:
-            logger.error(
-                "Messenger not available (self._messenger is None).\n\tPrediction not sent: %s",
-                prediction,
-            )
+            # Only log an error in online mode
+            if self.online:
+                logger.error(
+                    "Messenger not available (self._messenger is None). Prediction not sent: %s",
+                    prediction,
+                )
+            else:
+                logger.debug(
+                    "Offline mode: Messenger not available. Prediction not sent: %s", prediction
+                )
