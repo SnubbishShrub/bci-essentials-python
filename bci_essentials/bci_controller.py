@@ -201,10 +201,18 @@ class BciController:
 
         See setup() for configuration of processing.
 
-        The method processes markers in the following order:
-        1. First checks if the marker is a known command marker from self.marker_methods
-        2. Then checks if it's an event marker (contains commas)
-        3. If neither, logs a warning about unknown marker type
+        The method:
+        1. Pulls data from sources (EEG and markers).
+        2. Run a while loop to process markers as long as there are unprocessed markers.
+        3. The while loop processes the markers in the following order:
+            - First checks if the marker is a known command marker from self.marker_methods.
+            - Then checks if it's an event marker (contains commas)
+            - If neither, logs a warning about unknown marker type
+        3. If the marker is a command marker, handles it by calling __handle_command_marker().
+        4. If the marker is an event marker, handles it by calling __handle_event_marker().
+        5. If the command or event marker handling return continue_flag as True, increment the marker count and process the next marker.
+            - Note: If there is an unknown marker type, the marker count is still incremented and processing continues.
+        6. If the command or event marker handling return continue_flag as False, break out of the while loop and end the step.
 
         Parameters
         ----------
@@ -236,54 +244,25 @@ class BciController:
             # Process markers in order specified in the docstrings
             # First check if it's a known command marker
             if current_step_marker in self.marker_methods:
-                # If the marker is within the self.marker_methods dictionary, call the corresponding method
-                # continue_flag = self.marker_methods[current_step_marker]()
-                # OR
                 continue_flag = self.__handle_command_marker(current_step_marker)
-                # if continue_flag is False:
-                #     break
             # Then check if it's an event marker (contains commas)
             elif "," in current_step_marker:
                 continue_flag = self.__handle_event_marker(
                     current_step_marker, current_timestamp
                 )
-                # if continue_flag is False:
-                #     break
+            # Otherwise, log a warning about unknown marker type
             else:
                 # Log warning for unknown marker types
                 logger.warning("Unknown marker type received: %s", current_step_marker)
 
             # Check if we should continue processing markers in the while loop
             # if continue_flag is False, then break out of the while loop
-            # else, increment the marker count and processthe next marker
+            # else, increment the marker count and process the next marker
             if continue_flag is False:
                 break
             else:
                 logger.info("Processed Marker: %s", current_step_marker)
                 self.marker_count += 1
-
-            # OLD CODE
-            # # If the marker contains a single string, then it is a command marker
-            # marker_is_single_string = len(current_step_marker.split(",")) == 1
-            # is_event_marker = not marker_is_single_string
-
-            # # Handle event markers
-            # if is_event_marker:
-            #     continue_flag = self.__handle_event_marker(
-            #         current_step_marker, current_timestamp
-            #     )
-            #     if continue_flag is False:
-            #         break
-
-            # # Handle all other markers
-            # method = self.marker_methods.get(current_step_marker)
-            # if method:
-            #     continue_flag = method()
-            #     if continue_flag is False:
-            #         break
-
-            # logger.info("Processed Marker: %s", current_step_marker)
-            # self.marker_count += 1
 
     def run(self, max_loops: int = 1000000):
         """Runs BciController processing in a loop.
