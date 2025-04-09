@@ -385,7 +385,7 @@ def ssvep_templates(
     Returns
     -------
     templates : numpy.ndarray
-        SSVEP templates with shape (n_targets, 2*n_harmonics, n_samples)
+        SSVEP templates with shape (n_targets, (fundamental freq [1] + harmonic freqs [n_harmonics]) * 2, n_samples)
         where each target frequency has n_harmonics sine-cosine pairs.
         The harmonics are arranged as [sin(f), cos(f), sin(2f), cos(2f), ...].
     """
