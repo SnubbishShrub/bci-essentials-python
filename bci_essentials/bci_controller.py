@@ -235,12 +235,10 @@ class BciController:
             current_step_marker = self.marker_data[self.marker_count]  # String
             current_timestamp = self.marker_timestamps[self.marker_count]  # Float
 
-            # ADD COMMENT
+            # If messenger is available, send feedback for each marker received
             if self._messenger is not None:
-                # send feedback for each marker that you receive
                 self._messenger.marker_received(current_step_marker)
 
-            # NEW CODE
             # Process markers in order specified in the docstrings
             # First check if it's a known command marker
             if current_step_marker in self.marker_methods:
@@ -279,7 +277,6 @@ class BciController:
         `None`
 
         """
-
         # if offline, then all data is already loaded, only need to loop once
         if self.online is False:
             self.loops = max_loops - 1
