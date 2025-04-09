@@ -702,5 +702,6 @@ class BciController:
                 )
             else:
                 logger.debug(
-                    "Offline mode: Messenger not available. Prediction not sent: %s", prediction
+                    "Offline mode: Messenger not available. Prediction not sent: %s",
+                    prediction,
                 )
