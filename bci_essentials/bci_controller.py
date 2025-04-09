@@ -678,6 +678,10 @@ class BciController:
     def __handle_command_marker(self, marker: str) -> bool:
         """Processes a command marker by invoking its associated method.
 
+        The command marker string is assumed to be in the self.marker_methods dictionary.
+        The associated method is retrieved and called.
+        The return value of the method is used to determine if processing should continue.
+
         Parameters
         ----------
         marker : str
@@ -687,9 +691,14 @@ class BciController:
         -------
         bool
             A flag indicating if the processing should continue.
+
         """
         logger.debug("Processing command marker: %s", marker)
         continue_flag = self.marker_methods[marker]()
+        command_marker_method = self.marker_methods[marker]  # Retrieve method
+        continue_flag = command_marker_method()  # Call method
+
+        # Debug level logging if continue_flag is FALSE
         if continue_flag is False:
             logger.debug("Command marker '%s' set continue_flag to FALSE", marker)
 
