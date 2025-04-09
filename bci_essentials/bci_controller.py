@@ -693,8 +693,6 @@ class BciController:
             A flag indicating if the processing should continue.
 
         """
-        logger.debug("Processing command marker: %s", marker)
-        continue_flag = self.marker_methods[marker]()
         command_marker_method = self.marker_methods[marker]  # Retrieve method
         continue_flag = command_marker_method()  # Call method
 
