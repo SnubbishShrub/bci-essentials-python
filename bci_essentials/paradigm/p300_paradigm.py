@@ -108,7 +108,9 @@ class P300Paradigm(Paradigm):
         train_target = int(markers[0].split(",")[3])
         y = np.zeros(num_objects, dtype=int)
         if train_target != -1:
-            y[train_target] = 1
+            # Convert 1-indexed target to array index
+            train_target_array_index = train_target - 1
+            y[train_target_array_index] = 1
         if train_target is -1:  # Set all values of y to -1
             y = np.full(num_objects, -1)
 
@@ -152,14 +154,17 @@ class P300Paradigm(Paradigm):
 
             # For each flash index in the marker
             for flash_index in flash_indices:
-                if flash_counts[flash_index] == 0:
-                    object_epochs[flash_index] = epoch_X
-                    flash_counts[flash_index] += 1
+                # Convert 1-indexed value to array index
+                flash_array_index = flash_index - 1
+
+                if flash_counts[flash_array_index] == 0:
+                    object_epochs[flash_array_index] = epoch_X
+                    flash_counts[flash_array_index] += 1
                 else:
-                    object_epochs[flash_index] = np.concatenate(
-                        (object_epochs[flash_index], epoch_X), axis=0
+                    object_epochs[flash_array_index] = np.concatenate(
+                        (object_epochs[flash_array_index], epoch_X), axis=0
                     )
-                    flash_counts[flash_index] += 1
+                    flash_counts[flash_array_index] += 1
 
         # Average all epochs for each object
         object_epochs_mean = [np.zeros((n_channels, len(epoch_time)))] * num_objects
