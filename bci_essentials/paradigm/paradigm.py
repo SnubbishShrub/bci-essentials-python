@@ -2,7 +2,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 from ..utils.logger import Logger
-from ..signal_processing import bandpass
+from ..signal_processing import bandpass, lowpass
 
 # Instantiate a logger for the module at the default level of logging.INFO
 # Logs to bci_essentials.__module__) where __module__ is the name of the module
@@ -33,30 +33,74 @@ class Paradigm(ABC):
         # Do we classify labeled epochs (such as in the case of iterative training)?
         self.classify_labeled_epochs = False
 
-    def _preprocess(self, eeg, fsample, lowcut, highcut):
+    def _preprocess(self, eeg, fsample, lowcut, highcut, order=5):
         """
-        Preprocess EEG data with bandpass filter.
+        Preprocess EEG data with the appropriate filter type:
+        - If the data is continuous (i.e., shape is [channels, samples]), a
+        bandpass filter is used.
+
+        - If the data is epoched (i.e., shape is [epoch, channels, samples]),
+        the filter type depends on the signal length relative to the filter's settling time:
+            - If signal length > settling time: use bandpass filter
+            - If signal length ≤ settling time: use lowpass filter
+            - The settling time is calculated by:
+                1. Compute the time constant (tc) of the highpass filter:
+                    tc = 1 / (2 * π * lowcut)
+                2. Compute the settling time with the formula:
+                    settling_time = tc * 5 * order
+                    - In a first-order system, a rule-of-thumb is that the signal settles in approximately 5 time constants (tc * 5)
+                    - In higher-order filters (e.g., a 5th-order filter set as the default), the settling time incrases linearly with the order of the filter (order * tc * 5)
+                    - This is a simplification, but it provides a good approximation for the settling time of the filter.
+                    - For more details, see the reference below:
+                        https://www.analogictips.com/an-overview-of-filters-and-their-parameters-part-4-time-and-phase-issues/
 
         Parameters
         ----------
         eeg : np.ndarray
-            EEG data. Shape is (n_channels, n_samples).
+            EEG data. Shape can be 2D [n_channels, n_samples]
+            or 3D [epochs, n_channels, n_samples].
         fsample : float
             Sampling frequency.
         lowcut : float
             Lower cutoff frequency.
         highcut : float
             Upper cutoff frequency.
+        order : int
+            Order of the filter [n]. Default is 5.
 
         Returns
         -------
         np.ndarray
-            Bandpassed EEG data. Shape is (n_channels, n_samples).
+            Preprocessed EEG. Shape is the same as `eeg`.
 
         """
-        new_eeg = bandpass(eeg, lowcut, highcut, 5, fsample)
 
-        return new_eeg
+        n_dims = len(eeg.shape)
+        if n_dims == 2:
+            logger.debug("Preprocessing continuous EEG")
+            preprocessed_eeg = bandpass(eeg, lowcut, highcut, order, fsample)
+        elif n_dims == 3:
+            logger.debug("Preprocessing epoched EEG")
+
+            # Get the length of the signal
+            signal_length = eeg.shape[2]
+
+            # Highpass filter settling time
+            tc = 1 / (2 * np.pi * lowcut)
+            settling_time = order * tc * 5
+
+            if signal_length > settling_time:
+                logger.debug("Applied bandpass filter to epoched EEG")
+                preprocessed_eeg = bandpass(eeg, lowcut, highcut, order, fsample)
+            else:
+                logger.debug("Applied lowpass filter to epoched EEG")
+                preprocessed_eeg = lowpass(eeg, highcut, order, fsample)
+        else:
+            raise ValueError(
+                "Preprocessing failed. EEG must be 2D (continuous) or 3D (epoched)."
+            )
+
+        return preprocessed_eeg
 
     def package_resting_state_data(
         self, marker_data, marker_timestamps, bci_controller, eeg_timestamps, fsample
@@ -78,8 +122,15 @@ class Paradigm(ABC):
 
         Returns
         -------
-        `None`
-            `self.rest_trials` is updated.
+        resting_state_data : dict
+            Dictionary containing resting state data with keys:
+            - 'eyes_open_trials': np.ndarray of EEG data during eyes open condition
+            - 'eyes_open_timestamps': np.ndarray of timestamps for eyes open trials
+            - 'eyes_closed_trials': np.ndarray of EEG data during eyes closed condition
+            - 'eyes_closed_timestamps': np.ndarray of timestamps for eyes closed trials
+            - 'rest_trials': np.ndarray of EEG data during rest condition
+            - 'rest_timestamps': np.ndarray of timestamps for rest trials
+            If an error occurs, returns `None`.
 
         """
         try:
@@ -268,7 +319,7 @@ class Paradigm(ABC):
             return resting_state_data
 
         except Exception as e:
-            logger.error(f"Error packaging resting state data: {e}")
+            logger.error("Error packaging resting state data: %s", e)
 
             return None
 

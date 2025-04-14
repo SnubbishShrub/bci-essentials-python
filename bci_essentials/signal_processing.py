@@ -68,9 +68,9 @@ def bandpass(data, f_low, f_high, order, fsample):
 
         shape = (n_trials, n_channels, n_samples) or (n_channels, n_samples)
     f_low : float
-        Lower corner frequency.
+        Lower cut-off frequency.
     f_high : float
-        Upper corner frequency.
+        Upper cut-off frequency.
     order : int
         Order of the filter.
     fsample : float
@@ -94,7 +94,7 @@ def bandpass(data, f_low, f_high, order, fsample):
 
 
 @validate_filter_input
-def lowpass(data, f_critical, order, fsample):
+def lowpass(data, f_cutoff, order, fsample):
     """Lowpass Filter.
 
     Filters out frequencies above f_critical with a Butterworth filter of specific order.
@@ -108,8 +108,8 @@ def lowpass(data, f_critical, order, fsample):
         3D (or 2D) array containing data with `float` type.
 
         shape = (n_trials, n_channels, n_samples) or (n_channels, n_samples)
-    f_critical : float
-        Critical (cutoff) frequency.
+    f_cutoff : float
+        Cut-off frequency.
     order : int
         Order of the filter.
     fsample : float
@@ -124,7 +124,7 @@ def lowpass(data, f_critical, order, fsample):
         shape = (n_trials, n_channels, n_samples) or (n_channels, n_samples)
 
     """
-    Wn = f_critical / (fsample / 2)
+    Wn = f_cutoff / (fsample / 2)
     sos = signal.butter(order, Wn, btype="lowpass", output="sos")
 
     filtered_data = signal.sosfiltfilt(sos, data, padlen=0)
@@ -133,7 +133,7 @@ def lowpass(data, f_critical, order, fsample):
 
 
 @validate_filter_input
-def highpass(data, f_critical, order, fsample):
+def highpass(data, f_cutoff, order, fsample):
     """Highpass Filter.
 
     Filters out frequencies below f_critical with a Butterworth filter of specific order.
@@ -147,8 +147,8 @@ def highpass(data, f_critical, order, fsample):
         3D (or 2D) array containing data with `float` type.
 
         shape = (n_trials, n_channels, n_samples) or (n_channels, n_samples)
-    f_critical : float
-        Critical (cutoff) frequency.
+    f_cutoff : float
+        Cut-off frequency.
     order : int
         Order of the filter.
     fsample : float
@@ -162,7 +162,7 @@ def highpass(data, f_critical, order, fsample):
 
         shape = (n_trials, n_channels, n_samples) or (n_channels, n_samples)
     """
-    Wn = f_critical / (fsample / 2)
+    Wn = f_cutoff / (fsample / 2)
     sos = signal.butter(order, Wn, btype="highpass", output="sos")
 
     filtered_data = signal.sosfiltfilt(sos, data, padlen=0)
