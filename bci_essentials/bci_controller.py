@@ -39,6 +39,7 @@ class MarkerTypes(Enum):
     TRAINING_COMPLETE = "Training Complete"
     TRAIN_CLASSIFIER = "Train Classifier"
     DONE_RS_COLLECTION = "Done with all RS collection"
+    UPDATE_CLASSIFIER = "Update Classifier"
 
 
 # EEG data
@@ -133,6 +134,7 @@ class BciController:
             MarkerTypes.TRIAL_ENDS.value: self.__handle_trial_end,
             MarkerTypes.TRAINING_COMPLETE.value: self.__update_and_train_classifier,
             MarkerTypes.TRAIN_CLASSIFIER.value: self.__update_and_train_classifier,
+            MarkerTypes.UPDATE_CLASSIFIER.value: self.__update_and_train_classifier,
         }
 
         self.ping_count = 0
