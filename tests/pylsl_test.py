@@ -20,13 +20,13 @@ inlet = StreamInlet(selected_stream)
 sample_rate = 256
 n_channels = inlet.channel_count
 threshold = 2/sample_rate  # Maximum allowed time difference
+chunk_size = sample_rate // 16  # Number of samples to read at once
 # print(f"Sample rate: {sample_rate} Hz")
 print(f"Channel count: {n_channels}")
 
 
 def original_pull_chunk():
     # Read data in chunks
-    chunk_size = 128  # Adjust this value based on your needs
     all_timestamps = []  # Store all timestamps
     print(f"Timing threshold: {threshold:.6f} seconds")
 
@@ -45,87 +45,65 @@ def original_pull_chunk():
                 all_timestamps.extend(chunk_timestamps)
                 
                 # Check timing differences within this chunk
-                if len(chunk_timestamps) > 1:
-                    time_diffs = np.diff(chunk_timestamps)
-                    max_diff = np.max(time_diffs)
-                    if max_diff > threshold:
-                        print(f"Warning: Large timing gap detected: {max_diff:.6f} seconds")
-                        
-                # Check timing difference between chunks
-                if len(all_timestamps) > len(chunk_timestamps):
-                    chunk_gap = chunk_timestamps[0] - all_timestamps[-len(chunk_timestamps)-1]
-                    if chunk_gap > threshold:
-                        print(f"Warning: Large gap between chunks: {chunk_gap:.6f} seconds")
+                check_timing(chunk_timestamps, all_timestamps, threshold)                    
                         
         except KeyboardInterrupt:
             print("\nStream reading with traditional method stopped.")
             break
 
 def np_pull_chunk():
-    # Initialize buffer and timestamps
-    buffer = np.empty((sample_rate//2, n_channels), dtype=np.float32)
-    timestamps = np.empty(sample_rate//2, dtype=np.float64)
-    current_idx = 0
+    # Initialize fixed buffer and timestamps
+    buffer = np.empty((chunk_size, n_channels), dtype=np.float32)
     all_timestamps = []  # Store all timestamps
+    all_samples = []     # Store all samples
 
     while True:
         try: 
-            # Pull chunk into buffer starting at current_idx
-            inlet.pull_chunk(
-                max_samples=buffer.shape[0]-current_idx,
-                dest_obj=buffer[current_idx:]
+            # Pull chunk into buffer from start (overwrite)
+            _, chunk_timestamps = inlet.pull_chunk(
+                max_samples=chunk_size,
+                dest_obj=buffer,
+                timeout=0.001
             )
 
-            # Save time stamps
-            all_timestamps.append(buffer)
-
-            
-            if buffer.size > 0:
-                # Store timestamps
-                timestamps[current_idx:current_idx+len(chunk_timestamps)] = chunk_timestamps
-                current_idx += len(chunk_timestamps)
+            if len(chunk_timestamps) > 0:
+                # Store valid portion of data
+                valid_data = buffer.copy()[:len(chunk_timestamps)]
+                all_samples.append(valid_data)
                 all_timestamps.extend(chunk_timestamps)
                 
-                # Resize buffers if full
-                if current_idx >= buffer.shape[0]:
-                    new_size = buffer.shape[0] * 2
-                    # Resize data buffer
-                    new_buffer = np.empty((new_size, n_channels), dtype=np.float32)
-                    new_buffer[:buffer.shape[0]] = buffer
-                    buffer = new_buffer
-                    # Resize timestamps buffer
-                    new_timestamps = np.empty(new_size, dtype=np.float64)
-                    new_timestamps[:timestamps.shape[0]] = timestamps
-                    timestamps = new_timestamps
-                    
-            # Process valid data slice
-            if current_idx > 0:
-                check_timing(timestamps[:current_idx], threshold, all_timestamps)
+                # Process valid data slice (use chunk_timestamps directly)
+                check_timing(chunk_timestamps, all_timestamps, threshold)
 
         except KeyboardInterrupt:
-            print("\nStream reading with numpy method stopped.")
+            # Convert all samples to single numpy array
+            print(f"\nStream reading stopped")
             break
 
-def check_timing(timestamps, threshold, all_timestamps):
+
+def check_timing(chunk_timestamps, all_timestamps, threshold):
     scale = 1e3  # Scale timestamps to milliseconds for better readability
     # Check timing differences within this chunk
-    if len(timestamps) > 1:
-        time_diffs = np.diff(timestamps)
+    if len(chunk_timestamps) > 1:
+        time_diffs = np.diff(chunk_timestamps)
         max_diff = np.max(time_diffs)
         if max_diff > threshold:
-            print(f"Warning: Gap WITHIN chunk detected: {scale*max_diff:.2f} msec")
+            print(f"Warning: Gap WITHIN chunk detected: {scale*max_diff:.2f} msec, {1/max_diff:.2f} Hz")
             
     # Check timing difference between chunks
-    if len(all_timestamps) > len(timestamps):
-        chunk_gap = timestamps[0] - all_timestamps[-len(timestamps)-1]
+    if len(all_timestamps) > len(chunk_timestamps):
+        chunk_gap = chunk_timestamps[0] - all_timestamps[-len(chunk_timestamps)-1]
         if chunk_gap > threshold:
-            print(f"Warning: Gap BETWEEN chunks detected: {scale*chunk_gap:.2f} msec")
+            print(f"Warning: Gap BETWEEN chunks detected: {scale*chunk_gap:.2f} msec, {1/chunk_gap:.2f} Hz")
 
 
 methods = {
-    "1": original_pull_chunk(),
-    "2": np_pull_chunk(),
+    "1": original_pull_chunk,
+    "2": np_pull_chunk,
 }
+print("\nSelect method to use:")
+print("1: Original pull chunk method")
+print("2: Numpy optimized pull chunk method")
 method = input("Enter method number: ")
 if method in methods:
-    methods[method]
+    methods[method]()
