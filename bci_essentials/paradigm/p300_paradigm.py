@@ -15,6 +15,7 @@ class P300Paradigm(Paradigm):
         epoch_start=0,
         epoch_end=0.6,
         buffer_time=0.01,
+        preprocessing_window=2,
     ):
         """
         Parameters
@@ -34,6 +35,9 @@ class P300Paradigm(Paradigm):
         buffer_time : float, *optional*
             Defines the time in seconds after an epoch for which we require EEG data to ensure that all EEG is present in that epoch.
             - Default is `0.01`.
+        preprocessing_window : float, *optional*
+            Defines the time in seconds before and after a marker to include additional EEG data in preprocessing.
+            - Default is `2`.
         """
 
         super().__init__(filters)
@@ -53,6 +57,8 @@ class P300Paradigm(Paradigm):
         self.epoch_end = epoch_end
 
         self.buffer_time = buffer_time
+
+        self.preprocessing_window = preprocessing_window
 
     def get_eeg_start_and_end_times(self, markers, timestamps):
         """
@@ -116,8 +122,6 @@ class P300Paradigm(Paradigm):
 
         # X = np.zeros((num_objects, n_channels, len(epoch_time)))
 
-        buffer_window = 2
-
         # Do ensemble averaging so that we return a single epoch for each object
 
         for i, marker in enumerate(markers):
@@ -131,8 +135,8 @@ class P300Paradigm(Paradigm):
             # Subtract the marker timestamp from the EEG timestamps so that 0 becomes the marker onset
             marker_eeg_timestamps = eeg_timestamps - marker_timestamp
 
-            # Create the epoch time vector
-            epoch_time = np.arange(-buffer_window, buffer_window, 1 / fsample)
+            # Create the epoch time vector using the preprocessing window
+            epoch_time = np.arange(-self.preprocessing_window, self.preprocessing_window, 1 / fsample)
 
             epoch_X = np.zeros((1, n_channels, len(epoch_time)))
 
@@ -152,9 +156,10 @@ class P300Paradigm(Paradigm):
                 epoch_X[0, :, :], fsample, self.lowcut, self.highcut
             )
 
-            # Trim the epoch
+            # Find indexes for the start and end time of the trimmed epoch
             trimmed_epoch_start = np.searchsorted(epoch_time, self.epoch_start)
             trimmed_epoch_end = np.searchsorted(epoch_time, self.epoch_end)
+            # Trim the epoch
             trimmed_epoch_X = epoch_X[:, :, trimmed_epoch_start:trimmed_epoch_end]
             trimmed_epoch_time = np.arange(self.epoch_start, self.epoch_end, 1 / fsample)
 
