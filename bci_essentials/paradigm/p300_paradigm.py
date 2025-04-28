@@ -116,6 +116,8 @@ class P300Paradigm(Paradigm):
 
         # X = np.zeros((num_objects, n_channels, len(epoch_time)))
 
+        buffer_window = 2
+
         # Do ensemble averaging so that we return a single epoch for each object
 
         for i, marker in enumerate(markers):
@@ -130,7 +132,7 @@ class P300Paradigm(Paradigm):
             marker_eeg_timestamps = eeg_timestamps - marker_timestamp
 
             # Create the epoch time vector
-            epoch_time = np.arange(self.epoch_start, self.epoch_end, 1 / fsample)
+            epoch_time = np.arange(-buffer_window, buffer_window, 1 / fsample)
 
             epoch_X = np.zeros((1, n_channels, len(epoch_time)))
 
@@ -150,23 +152,29 @@ class P300Paradigm(Paradigm):
                 epoch_X[0, :, :], fsample, self.lowcut, self.highcut
             )
 
+            # Trim the epoch
+            trimmed_epoch_start = np.searchsorted(epoch_time, self.epoch_start)
+            trimmed_epoch_end = np.searchsorted(epoch_time, self.epoch_end)
+            trimmed_epoch_X = epoch_X[:, :, trimmed_epoch_start:trimmed_epoch_end]
+            trimmed_epoch_time = np.arange(self.epoch_start, self.epoch_end, 1 / fsample)
+
             # For each flash index in the marker
             for flash_index in flash_indices:
                 if flash_counts[flash_index] == 0:
-                    object_epochs[flash_index] = epoch_X
+                    object_epochs[flash_index] = trimmed_epoch_X
                     flash_counts[flash_index] += 1
                 else:
                     object_epochs[flash_index] = np.concatenate(
-                        (object_epochs[flash_index], epoch_X), axis=0
+                        (object_epochs[flash_index], trimmed_epoch_X), axis=0
                     )
                     flash_counts[flash_index] += 1
 
         # Average all epochs for each object
-        object_epochs_mean = [np.zeros((n_channels, len(epoch_time)))] * num_objects
+        object_epochs_mean = [np.zeros((n_channels, len(trimmed_epoch_time)))] * num_objects
         for i in range(num_objects):
             object_epochs_mean[i] = np.mean(object_epochs[i], axis=0)
 
-        X = np.zeros((num_objects, n_channels, len(epoch_time)))
+        X = np.zeros((num_objects, n_channels, len(trimmed_epoch_time)))
         for i in range(num_objects):
             X[i, :, :] = object_epochs_mean[i]
         # # object_epochs_mean = np.mean(object_epochs, axis=1)
