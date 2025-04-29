@@ -17,9 +17,7 @@ messenger = LslMessenger()
 paradigm = SsvepParadigm()
 data_tank = DataTank()
 
-logger = Logger(name=__name__)
-
-# Define the classifier    
+logger = Logger(name=__name__)  
 
 # Settings
 target_frequencies = np.array([6.25, 10, 11.11111, 14.28571])
@@ -30,7 +28,7 @@ nsamples = 5 * 256  # 5 seconds of data at 256 Hz
 fsample = 256.0  # Hz
 concatenate_trials = True  # Concatenate trials for training
 
-classifier = SsvepFbCcaClassifier(subset=[])
+classifier = SsvepFbCcaClassifier(subset=["O1", "Oz", "O2"])
 classifier.set_ssvep_settings(
     fsample=256.0,
     n_harmonics=n_harmonics,  # Number of harmonics to use for SSVEP classification
@@ -39,11 +37,6 @@ classifier.set_ssvep_settings(
     filter_bank=fb_cutoffs,
     concatenate_trials=concatenate_trials,
 )
-
-#classifier = SsvepFbCcaClassifier()
-#classifier.set_ssvep_settings(
-#    sampling_freq=256.0, target_freqs= [7.692307, 10, 12.5, 14.28571])
-
 
 # Initialize the data class
 test_ssvep = BciController(

@@ -145,6 +145,8 @@ class SsvepFbCcaClassifier(GenericClassifier):
         if self.concatenate_trials:
             X = concatenate_trials(X)
 
+        X = self.get_subset(X)
+
         # Create signal templates for each target frequency
         # This is only done once to speed up the process, or if the epoch size changes
         if ((self.templates is None) or (X.shape[-1] != self.templates.shape[-1])):
