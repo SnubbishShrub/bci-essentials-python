@@ -156,12 +156,9 @@ class P300Paradigm(Paradigm):
                 epoch_X[0, :, :], fsample, self.lowcut, self.highcut
             )
 
-            # Find indexes for the start and end time of the trimmed epoch
-            trimmed_epoch_start = np.searchsorted(epoch_time, self.epoch_start)
-            trimmed_epoch_end = np.searchsorted(epoch_time, self.epoch_end)
             # Trim the epoch
-            trimmed_epoch_X = epoch_X[:, :, trimmed_epoch_start:trimmed_epoch_end]
-            trimmed_epoch_time = np.arange(self.epoch_start, self.epoch_end, 1 / fsample)
+            trimmed_epoch_X = epoch_X[:, :, ((epoch_time >= self.epoch_start) & (epoch_time <= self.epoch_end))]
+            # trimmed_epoch_time = np.arange(self.epoch_start, self.epoch_end, 1 / fsample)
 
             # For each flash index in the marker
             for flash_index in flash_indices:
@@ -175,11 +172,11 @@ class P300Paradigm(Paradigm):
                     flash_counts[flash_index] += 1
 
         # Average all epochs for each object
-        object_epochs_mean = [np.zeros((n_channels, len(trimmed_epoch_time)))] * num_objects
+        object_epochs_mean = [np.zeros((n_channels, trimmed_epoch_X.shape[-1]))] * num_objects
         for i in range(num_objects):
             object_epochs_mean[i] = np.mean(object_epochs[i], axis=0)
 
-        X = np.zeros((num_objects, n_channels, len(trimmed_epoch_time)))
+        X = np.zeros((num_objects, n_channels, trimmed_epoch_X.shape[-1]))
         for i in range(num_objects):
             X[i, :, :] = object_epochs_mean[i]
         # # object_epochs_mean = np.mean(object_epochs, axis=1)
