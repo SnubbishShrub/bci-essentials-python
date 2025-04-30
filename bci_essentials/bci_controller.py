@@ -200,7 +200,7 @@ class BciController:
         self.online_selections = []
 
         # Check for a temp_epochs file
-        if online == True:
+        if online:
             self.temp_epochs = os.path.join(
                 os.path.dirname(os.path.dirname(__file__)), "temp_epochs.npz"
             )
