@@ -5,6 +5,10 @@ from bci_essentials.paradigm.p300_paradigm import P300Paradigm
 from bci_essentials.data_tank.data_tank import DataTank
 from bci_essentials.classification.erp_rg_classifier import ErpRgClassifier
 
+from bci_essentials.utils.logger import Logger
+logger = Logger(name=__name__)
+logger.setLevel("DEBUG")
+
 # create LSL sources, these will block until the outlets are present
 eeg_source = LslEegSource()
 marker_source = LslMarkerSource()

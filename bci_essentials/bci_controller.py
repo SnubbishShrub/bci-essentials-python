@@ -514,9 +514,9 @@ class BciController:
         end_index = np.where(timestamps < eeg_end_time)[0][-1]
 
         time_diffs = np.diff(timestamps[start_index:end_index])
-        if np.any(time_diffs > 2 / self.fsample):
-            logger.warning("Time gaps in EEG data")
-            return "Skip"
+        # if np.any(time_diffs > 2 / self.fsample):
+        #     logger.warning("Time gaps in EEG data")
+        #     return "Skip"
 
         X, y = self.__paradigm.process_markers(
             self.event_marker_buffer,

@@ -1,6 +1,10 @@
 import numpy as np
 
 from .paradigm import Paradigm
+from ..utils.logger import Logger
+
+# Instantiate a logger for the module at the default level of logging.INFO
+logger = Logger(name=__name__)
 
 
 class P300Paradigm(Paradigm):
@@ -120,9 +124,62 @@ class P300Paradigm(Paradigm):
 
         flash_counts = np.zeros(num_objects)
 
-        # X = np.zeros((num_objects, n_channels, len(epoch_time)))
+        # Find first valid marker from start
+        start_idx = 0
+        while start_idx < len(marker_timestamps) and (eeg_timestamps[0] - marker_timestamps[start_idx]) > self.epoch_start:
+            logger.warning(
+                "Not enough EEG data in the preprocessing window for marker %s. Skipping this marker.",
+                markers[start_idx],
+            )
+            start_idx += 1
 
-        # Do ensemble averaging so that we return a single epoch for each object
+        # Find last valid marker from end
+        end_idx = len(marker_timestamps) - 1
+        while end_idx >= 0 and (eeg_timestamps[-1] - marker_timestamps[end_idx]) < self.epoch_end:
+            logger.warning(
+                "Not enough EEG data in the preprocessing window for marker %s. Skipping this marker.",
+                markers[end_idx],
+            )
+            end_idx -= 1
+
+        # TODO check thaat the logic is correct here, normalized and interpolated should consider the start and end times of the markers
+        # Create normalized EEG timestamps with valid markers
+        eeg_end = (len(eeg_timestamps) - (len(marker_timestamps) - end_idx - 1))
+        normalized_eeg_timestamps = eeg_timestamps[:eeg_end] - marker_timestamps[start_idx]
+
+        # Interpolate EEG considering epoch start and end times
+        interpolated_eeg_timestamps = np.arange(
+            normalized_eeg_timestamps[0] + self.epoch_start,
+            normalized_eeg_timestamps[-1] + self.epoch_end,
+            1 / fsample,
+        )
+
+        interpolated_eeg = np.empty((n_channels, len(normalized_eeg_timestamps)))
+        for c in range(n_channels):
+            interpolated_eeg[c, :] = np.interp(
+                interpolated_eeg_timestamps,
+                normalized_eeg_timestamps,
+                eeg[c, :],
+            )
+
+        pre_processed_eeg = super()._preprocess(
+            interpolated_eeg, fsample, self.lowcut, self.highcut
+        )
+
+        # Trim the preprocessed EEG data to the epoch time vector
+        normalized_marker_timestamps = np.array(marker_timestamps[start_idx:end_idx + 1]) - marker_timestamps[start_idx]
+        samples_per_epoch = int((self.epoch_end - self.epoch_start) * fsample)
+        n_markers = len(normalized_marker_timestamps)
+        epochs = np.empty((n_markers, n_channels, samples_per_epoch))
+
+        # Create epochs from each valid marker, rounding up to the nearest sample
+        for m, marker_time in enumerate(normalized_marker_timestamps):
+            start_idx = int(np.ceil(marker_time + self.epoch_start) * fsample)
+            end_idx = start_idx + samples_per_epoch
+            epochs[m, :, :] = pre_processed_eeg[:, start_idx:end_idx]
+
+        # TODO ensample averaging using the correcponding flash indices
+
 
         for i, marker in enumerate(markers):
             marker = marker.split(",")
@@ -148,6 +205,17 @@ class P300Paradigm(Paradigm):
                     np.zeros((num_objects, n_channels, len(epoch_time)))
                 ] * num_objects
 
+            # Skip marker if there is not enough EEG data in the preprocessing window
+            # LOOK HERE!!!!!!! If the first marker is skipped, the object epocs is not initialized, and the code will fail
+            if (marker_eeg_timestamps[0] > -self.preprocessing_window) or (
+                marker_eeg_timestamps[-1] < self.preprocessing_window
+            ):
+                logger.warning(
+                    "Not enough EEG data in the preprocessing window for marker %s. Skipping this marker.",
+                    marker,
+                )
+                continue
+
             # Interpolate the EEG data to the epoch time vector for each channel
             for c in range(n_channels):
                 epoch_X[0, c, :] = np.interp(
@@ -162,7 +230,7 @@ class P300Paradigm(Paradigm):
             trimmed_epoch_X = epoch_X[
                 :,
                 :,
-                ((epoch_time >= self.epoch_start) & (epoch_time <= self.epoch_end)),
+                (epoch_time >= self.epoch_start) & (epoch_time <= self.epoch_end)
             ]
 
             # For each flash index in the marker
