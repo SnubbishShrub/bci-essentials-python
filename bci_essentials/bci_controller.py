@@ -18,6 +18,7 @@ Classes
 """
 
 import time
+import os
 import numpy as np
 from enum import Enum
 
@@ -197,6 +198,40 @@ class BciController:
         self.num_online_selections = 0
         self.online_selection_indices = []
         self.online_selections = []
+
+        # Check for a temp_epochs file
+        if online == True:
+            self.temp_epochs = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "temp_epochs.npz"
+            )
+            if os.path.exists(self.temp_epochs):
+                # If temp_epochs older than 10 minutes, delete it
+                if os.path.getmtime(self.temp_epochs) < (time.time() - 300):
+                    os.remove(self.temp_epochs)
+                    logger.info("Deleted old temp_epochs file.")
+
+                else:
+                    # Load the temp_epochs file
+                    with open(self.temp_epochs, "rb") as f:
+                        X = np.load(f)["X"]
+                        y = np.load(f)["y"]
+                        paradigm_str = np.load(f)["paradigm"]
+
+                    # Check if the paradigm is the same
+                    paradigm_str = str(self.__paradigm)
+                    if str(self.__paradigm) != paradigm_str:
+                        logger.warning(
+                            "Paradigm in temp_epochs file does not match current paradigm. Deleting file."
+                        )
+                        os.remove(self.temp_epochs)
+
+                    else:
+                        # Add the epochs to the data tank
+                        self.__data_tank.add_epochs(X, y)
+
+                        # If there are epochs in the data tank, then train the classifier
+                        if len(self.__data_tank.labels) > 0:
+                            self.__update_and_train_classifier()
 
         # If there are epochs in the data tank, then train the classifier
         if len(self.__data_tank.labels) > 0:
@@ -529,6 +564,13 @@ class BciController:
             timestamps,
             self.fsample,
         )
+
+        # Save epochs to temp_epochs file
+        if self.online:
+            paradigm_str = str(self.__paradigm)
+            print(paradigm_str)
+            with open(self.temp_epochs, "wb") as f:
+                np.savez(f, X=self.epochs, y=self.labels, paradigm=paradigm_str)
 
         # Add the epochs to the data tank
         self.__data_tank.add_epochs(X, y)
