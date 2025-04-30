@@ -227,15 +227,14 @@ class BciController:
                     # If the paradigm is the same, then add the epochs to the data tank
                     else:
                         # Add the epochs to the data tank
+                        logger.info("Loading epochs from temp_epochs file.")
+                        logger.info("X shape: %s", X.shape)
+                        logger.info("y shape: %s", y.shape)
                         self.__data_tank.add_epochs(X, y)
 
                         # If there are epochs in the data tank, then train the classifier
                         if len(self.__data_tank.labels) > 0:
                             self.__update_and_train_classifier()
-
-        # If there are epochs in the data tank, then train the classifier
-        if len(self.__data_tank.labels) > 0:
-            self.__update_and_train_classifier()
 
     def step(self):
         """Runs a single BciController processing step.
@@ -565,15 +564,18 @@ class BciController:
             self.fsample,
         )
 
+        # Add the epochs to the data tank
+        self.__data_tank.add_epochs(X, y)
+
         # Save epochs to temp_epochs file
         if self.online:
             paradigm_str = self.__paradigm.paradigm_name
+            
             with open(self.temp_epochs, "wb") as f:
-                np.savez(f, X=X, y=y, paradigm=paradigm_str)
-        
-
-        # Add the epochs to the data tank
-        self.__data_tank.add_epochs(X, y)
+                np.savez(f, 
+                         X=self.__data_tank.epochs, 
+                         y=self.__data_tank.labels, 
+                         paradigm=paradigm_str)
 
         # If either there are no labels OR iterative training is on, then make a prediction
         if self.train_complete:
