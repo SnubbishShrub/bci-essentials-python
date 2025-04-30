@@ -33,6 +33,8 @@ class Paradigm(ABC):
         # Do we classify labeled epochs (such as in the case of iterative training)?
         self.classify_labeled_epochs = False
 
+        self.paradigm_name = "Generic"
+
     def _preprocess(self, eeg, fsample, lowcut, highcut, order=5):
         """
         Preprocess EEG data with the appropriate filter type:

@@ -570,7 +570,8 @@ class BciController:
             paradigm_str = str(self.__paradigm)
             print(paradigm_str)
             with open(self.temp_epochs, "wb") as f:
-                np.savez(f, X=self.epochs, y=self.labels, paradigm=paradigm_str)
+                np.savez(f, X=X, y=y, paradigm=paradigm_str)
+        
 
         # Add the epochs to the data tank
         self.__data_tank.add_epochs(X, y)
