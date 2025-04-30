@@ -216,7 +216,7 @@ class BciController:
                         X = np.load(f)["X"]
                         y = np.load(f)["y"]
                         paradigm_str = np.load(f)["paradigm"].item()
-                        
+
                     # If the paradigm is different, delete the file
                     if self.__paradigm.paradigm_name != paradigm_str:
                         logger.warning(
@@ -570,12 +570,14 @@ class BciController:
         # Save epochs to temp_epochs file
         if self.online:
             paradigm_str = self.__paradigm.paradigm_name
-            
+
             with open(self.temp_epochs, "wb") as f:
-                np.savez(f, 
-                         X=self.__data_tank.epochs, 
-                         y=self.__data_tank.labels, 
-                         paradigm=paradigm_str)
+                np.savez(
+                    f,
+                    X=self.__data_tank.epochs,
+                    y=self.__data_tank.labels,
+                    paradigm=paradigm_str,
+                )
 
         # If either there are no labels OR iterative training is on, then make a prediction
         if self.train_complete:
