@@ -1,4 +1,6 @@
 import numpy as np
+import os
+import time
 from ..utils.logger import Logger  # Logger wrapper
 
 # Instantiate a logger for the module at the default level of logging.INFO
@@ -38,6 +40,23 @@ class DataTank:
         # Keep track of how many epochs have been sent, so it is possible to only send new ones
         self.epochs_sent = 0
         self.epochs = np.zeros((0, 0))
+        self.labels = np.zeros((0), dtype=str)
+
+        # Check for a temp_epochs file
+        self.temp_epochs = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "temp_epochs.npz"
+        )
+        if os.path.exists(self.temp_epochs):
+            # If temp_epochs older than 10 minutes, delete it
+            if os.path.getmtime(self.temp_epochs) < (time.time() - 300):
+                os.remove(self.temp_epochs)
+                logger.info("Deleted old temp_epochs file.")
+
+            else:
+                # Load the temp_epochs file
+                with open(self.temp_epochs, "rb") as f:
+                    self.epochs = np.load(f)["X"]
+                    self.labels = np.load(f)["y"]
 
     def set_source_data(
         self, headset_string, fsample, n_channels, ch_types, ch_units, channel_labels
@@ -183,6 +202,10 @@ class DataTank:
             else:
                 self.epochs = np.concatenate((self.epochs, np.array(X)))
                 self.labels = np.concatenate((self.labels, np.array(y)))
+
+        # Save the epochs to a temp file
+        with open(self.temp_epochs, "wb") as f:
+            np.savez(f, X=self.epochs, y=self.labels)
 
     def get_epochs(self, latest=False):
         """

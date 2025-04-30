@@ -198,6 +198,10 @@ class BciController:
         self.online_selection_indices = []
         self.online_selections = []
 
+        # If there are epochs in the data tank, then train the classifier
+        if len(self.__data_tank.labels) > 0:
+            self.__update_and_train_classifier()
+
     def step(self):
         """Runs a single BciController processing step.
 
