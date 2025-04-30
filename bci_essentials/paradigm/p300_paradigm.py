@@ -158,7 +158,6 @@ class P300Paradigm(Paradigm):
 
             # Trim the epoch
             trimmed_epoch_X = epoch_X[:, :, ((epoch_time >= self.epoch_start) & (epoch_time <= self.epoch_end))]
-            # trimmed_epoch_time = np.arange(self.epoch_start, self.epoch_end, 1 / fsample)
 
             # For each flash index in the marker
             for flash_index in flash_indices:
