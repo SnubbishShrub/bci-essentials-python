@@ -215,16 +215,16 @@ class BciController:
                     with open(self.temp_epochs, "rb") as f:
                         X = np.load(f)["X"]
                         y = np.load(f)["y"]
-                        paradigm_str = np.load(f)["paradigm"]
-
-                    # Check if the paradigm is the same
-                    paradigm_str = str(self.__paradigm)
-                    if str(self.__paradigm) != paradigm_str:
+                        paradigm_str = np.load(f)["paradigm"].item()
+                        
+                    # If the paradigm is different, delete the file
+                    if self.__paradigm.paradigm_name != paradigm_str:
                         logger.warning(
                             "Paradigm in temp_epochs file does not match current paradigm. Deleting file."
                         )
                         os.remove(self.temp_epochs)
 
+                    # If the paradigm is the same, then add the epochs to the data tank
                     else:
                         # Add the epochs to the data tank
                         self.__data_tank.add_epochs(X, y)
@@ -567,8 +567,7 @@ class BciController:
 
         # Save epochs to temp_epochs file
         if self.online:
-            paradigm_str = str(self.__paradigm)
-            print(paradigm_str)
+            paradigm_str = self.__paradigm.paradigm_name
             with open(self.temp_epochs, "wb") as f:
                 np.savez(f, X=X, y=y, paradigm=paradigm_str)
         
