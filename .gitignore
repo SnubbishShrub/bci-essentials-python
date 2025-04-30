@@ -10,3 +10,4 @@ dist/
 plugins/FeatureExtractorSSVEP
 session_saves/*.pkl
 *.log
+*.npz
