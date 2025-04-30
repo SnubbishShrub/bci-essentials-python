@@ -156,7 +156,7 @@ class P300Paradigm(Paradigm):
                 epoch_X[0, :, :], fsample, self.lowcut, self.highcut
             )
 
-            # Trim the epoch
+            # Trim the preprocessed epoch
             trimmed_epoch_X = epoch_X[:, :, ((epoch_time >= self.epoch_start) & (epoch_time <= self.epoch_end))]
 
             # For each flash index in the marker
