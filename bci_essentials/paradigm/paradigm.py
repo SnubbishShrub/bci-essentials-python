@@ -3,11 +3,37 @@ from abc import ABC, abstractmethod
 
 from ..utils.logger import Logger
 from ..signal_processing import bandpass, lowpass
+from dataclasses import dataclass
 
 # Instantiate a logger for the module at the default level of logging.INFO
 # Logs to bci_essentials.__module__) where __module__ is the name of the module
 logger = Logger(name=__name__)
 
+@dataclass
+class ValidMarkerResults:
+    """ Container for valid markers and interpolated EEG data. 
+    
+    Attributes
+    ----------
+    interpolated_eeg : np.ndarray
+        Interpolated EEG data [channels, samples].
+    start_idx : int
+        Index of the first valid Unity marker.
+    end_idx : int
+        Index of the last valid Unity marker.
+    interpolated_eeg_timestamps : np.ndarray
+        Timestamps of the interpolated EEG data.
+    normalized_marker_timestamps : np.ndarray
+        Normalized timestamps of the Unity markers.
+    valid_unity_markers : np.ndarray
+        Valid Unity markers.
+    """
+    interpolated_eeg: np.ndarray
+    start_idx: int
+    end_idx: int
+    interpolated_eeg_timestamps: np.ndarray
+    normalized_marker_timestamps: np.ndarray
+    valid_unity_markers: np.ndarray
 
 class Paradigm(ABC):
     def __init__(self, filters=[5, 30], channel_subset=None):
@@ -328,15 +354,11 @@ class Paradigm(ABC):
             
         Returns
         -------
-        tuple
-            (interpolated_eeg, start_idx, end_idx, interpolated_eeg_timestamps)
-            - interpolated_eeg: np.array with shape (n_channels, n_samples)
-            - start_idx: int, index of first valid marker
-            - end_idx: int, index of last valid marker  
-            - interpolated_eeg_timestamps: np.array of interpolated timestamps
+        ValidMarkerResults
+            A dataclass containing the interpolated EEG data, start and end indices of valid markers,
+            interpolated EEG timestamps, and normalized marker timestamps.
         """
-        n_channels = eeg.shape[0]
-        
+                
         # Find first valid marker from start
         start_idx = 0
         while start_idx < len(marker_timestamps):
@@ -367,12 +389,21 @@ class Paradigm(ABC):
             )
             end_idx -= 1
 
-        # TODO check thaat the logic is correct here, normalized and interpolated should consider the start and end times of the markers
-        # Create normalized EEG timestamps with valid markers
+
         # Get valid EEG data range
-        last_valid_marker_time = marker_timestamps[end_idx]
-        eeg_end = np.where(eeg_timestamps <= last_valid_marker_time + self.epoch_end)[0][-1]
-        normalized_eeg_timestamps = eeg_timestamps[:eeg_end] - marker_timestamps[start_idx] + self.epoch_start
+        epoch_start_time = marker_timestamps[start_idx] + self.epoch_start  # Both in seconds
+        epoch_end_time = marker_timestamps[end_idx] + self.epoch_end  # Both in seconds
+
+        eeg_start = np.where(eeg_timestamps >= epoch_start_time)[0][0]
+        eeg_end = np.where(eeg_timestamps <= epoch_end_time)[0][-1]
+        valid_eeg = eeg[:, eeg_start:eeg_end+1]
+        
+        normalized_eeg_timestamps = eeg_timestamps[eeg_start:eeg_end+1] - marker_timestamps[start_idx]
+        
+        valid_markers_timestamps = marker_timestamps[start_idx:end_idx + 1]
+        normalized_marker_timestamps = valid_markers_timestamps - valid_markers_timestamps[0]
+
+        valid_markers = markers[start_idx:end_idx + 1]
         
         # Interpolate EEG considering epoch start and end times
         interpolated_eeg_timestamps = np.arange(
@@ -382,11 +413,20 @@ class Paradigm(ABC):
         )
 
         interpolated_eeg = np.array([
-            np.interp(interpolated_eeg_timestamps, normalized_eeg_timestamps, eeg[ch,:]) 
+            np.interp(interpolated_eeg_timestamps, normalized_eeg_timestamps, valid_eeg[ch, :]) 
             for ch in range(eeg.shape[0])
         ])
 
-        return interpolated_eeg
+        valid_marker_results = ValidMarkerResults(
+            interpolated_eeg=interpolated_eeg,
+            start_idx=start_idx,
+            end_idx=end_idx,
+            interpolated_eeg_timestamps=interpolated_eeg_timestamps,
+            normalized_marker_timestamps=normalized_marker_timestamps,
+            valid_unity_markers=valid_markers,
+        )
+
+        return valid_marker_results
 
     @abstractmethod
     def get_eeg_start_and_end_times(self, markers, timestamps):

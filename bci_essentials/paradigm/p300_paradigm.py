@@ -113,9 +113,11 @@ class P300Paradigm(Paradigm):
             Labels. Shape is (n_epochs).
         """
 
-        n_channels, _ = eeg.shape
+        n_channels = eeg.shape[0]
         num_objects = int(markers[0].split(",")[2])
         train_target = int(markers[0].split(",")[3])
+
+        # Initialize labels
         y = np.zeros(num_objects, dtype=int)
         if train_target != -1:
             y[train_target] = 1
@@ -125,27 +127,28 @@ class P300Paradigm(Paradigm):
         flash_counts = np.zeros(num_objects)
 
         # Find first valid markers and interpolate EEG data
-        interpolated_eeg = super()._find_valid_markers_and_interpolate(
+        valid_marker_results = super()._find_valid_markers_and_interpolate(
             markers, marker_timestamps, eeg, eeg_timestamps, fsample
         )
 
         pre_processed_eeg = super()._preprocess(
-            interpolated_eeg, fsample, self.lowcut, self.highcut
+            valid_marker_results.interpolated_eeg, fsample, self.lowcut, self.highcut
         )
 
         # Trim the preprocessed EEG data to the epoch time vector
-        normalized_marker_timestamps = np.array(marker_timestamps[start_idx:end_idx + 1]) - marker_timestamps[start_idx]
         samples_per_epoch = int((self.epoch_end - self.epoch_start) * fsample)
-        n_markers = len(normalized_marker_timestamps)
+        n_markers = len(valid_marker_results.normalized_marker_timestamps)
         epochs = np.empty((n_markers, n_channels, samples_per_epoch))
 
+        # TODO: This is not working as expected, the epochs are not being created correctly
         # Create epochs from each valid marker, rounding up to the nearest sample
-        for m, marker_time in enumerate(normalized_marker_timestamps):
+        for m, marker_time in enumerate(valid_marker_results.normalized_marker_timestamps):
             start_idx = int(np.ceil(marker_time + self.epoch_start) * fsample)
             end_idx = start_idx + samples_per_epoch
             epochs[m, :, :] = pre_processed_eeg[:, start_idx:end_idx]
 
         # TODO ensample averaging using the correcponding flash indices
+        a = 0
 
 
         for i, marker in enumerate(markers):
