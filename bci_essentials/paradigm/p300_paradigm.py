@@ -124,43 +124,10 @@ class P300Paradigm(Paradigm):
 
         flash_counts = np.zeros(num_objects)
 
-        # Find first valid marker from start
-        start_idx = 0
-        while start_idx < len(marker_timestamps) and (eeg_timestamps[0] - marker_timestamps[start_idx]) > self.epoch_start:
-            logger.warning(
-                "Not enough EEG data in the preprocessing window for marker %s. Skipping this marker.",
-                markers[start_idx],
-            )
-            start_idx += 1
-
-        # Find last valid marker from end
-        end_idx = len(marker_timestamps) - 1
-        while end_idx >= 0 and (eeg_timestamps[-1] - marker_timestamps[end_idx]) < self.epoch_end:
-            logger.warning(
-                "Not enough EEG data in the preprocessing window for marker %s. Skipping this marker.",
-                markers[end_idx],
-            )
-            end_idx -= 1
-
-        # TODO check thaat the logic is correct here, normalized and interpolated should consider the start and end times of the markers
-        # Create normalized EEG timestamps with valid markers
-        eeg_end = (len(eeg_timestamps) - (len(marker_timestamps) - end_idx - 1))
-        normalized_eeg_timestamps = eeg_timestamps[:eeg_end] - marker_timestamps[start_idx]
-
-        # Interpolate EEG considering epoch start and end times
-        interpolated_eeg_timestamps = np.arange(
-            normalized_eeg_timestamps[0] + self.epoch_start,
-            normalized_eeg_timestamps[-1] + self.epoch_end,
-            1 / fsample,
+        # Find first valid markers and interpolate EEG data
+        interpolated_eeg = super()._find_valid_markers_and_interpolate(
+            markers, marker_timestamps, eeg, eeg_timestamps, fsample
         )
-
-        interpolated_eeg = np.empty((n_channels, len(normalized_eeg_timestamps)))
-        for c in range(n_channels):
-            interpolated_eeg[c, :] = np.interp(
-                interpolated_eeg_timestamps,
-                normalized_eeg_timestamps,
-                eeg[c, :],
-            )
 
         pre_processed_eeg = super()._preprocess(
             interpolated_eeg, fsample, self.lowcut, self.highcut

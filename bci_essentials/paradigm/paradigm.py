@@ -307,6 +307,86 @@ class Paradigm(ABC):
             logger.error("Error packaging resting state data: %s", e)
 
             return None
+        
+    def _find_valid_markers_and_interpolate(self, markers, marker_timestamps, eeg, eeg_timestamps, fsample):
+        """
+        Find valid markers and interpolate EEG data between valid marker timestamps.
+        This works for one or multiple markers.
+        
+        Parameters
+        ----------
+        markers : list of str
+            List of markers
+        marker_timestamps : list or np.array
+            Timestamps for markers
+        eeg : np.array
+            EEG data with shape (n_channels, n_samples)
+        eeg_timestamps : np.array
+            Timestamps for EEG samples
+        fsample : float
+            Sampling frequency in Hz
+            
+        Returns
+        -------
+        tuple
+            (interpolated_eeg, start_idx, end_idx, interpolated_eeg_timestamps)
+            - interpolated_eeg: np.array with shape (n_channels, n_samples)
+            - start_idx: int, index of first valid marker
+            - end_idx: int, index of last valid marker  
+            - interpolated_eeg_timestamps: np.array of interpolated timestamps
+        """
+        n_channels = eeg.shape[0]
+        
+        # Find first valid marker from start
+        start_idx = 0
+        while start_idx < len(marker_timestamps):
+            time_before_marker = marker_timestamps[start_idx] - eeg_timestamps[0]
+            has_sufficient_pre_data = time_before_marker >= np.abs(self.epoch_start)
+
+            if has_sufficient_pre_data:
+                break
+            
+            logger.warning(
+                "Not enough EEG data in the before marker %s for preprocessing. Skipping this marker.",
+                markers[start_idx],
+            )
+            start_idx += 1
+            
+        # Find last valid marker from end  
+        end_idx = len(marker_timestamps) - 1
+        while end_idx >= start_idx:
+            time_after_marker = eeg_timestamps[-1] - marker_timestamps[end_idx]
+            has_sufficient_post_data = time_after_marker >= self.epoch_end
+
+            if has_sufficient_post_data:    
+                break
+
+            logger.warning(
+                "Not enough EEG data in the after marker %s for preprocessing. Skipping this marker.",
+                markers[end_idx],
+            )
+            end_idx -= 1
+
+        # TODO check thaat the logic is correct here, normalized and interpolated should consider the start and end times of the markers
+        # Create normalized EEG timestamps with valid markers
+        # Get valid EEG data range
+        last_valid_marker_time = marker_timestamps[end_idx]
+        eeg_end = np.where(eeg_timestamps <= last_valid_marker_time + self.epoch_end)[0][-1]
+        normalized_eeg_timestamps = eeg_timestamps[:eeg_end] - marker_timestamps[start_idx] + self.epoch_start
+        
+        # Interpolate EEG considering epoch start and end times
+        interpolated_eeg_timestamps = np.arange(
+            0,
+            normalized_eeg_timestamps[-1],
+            1 / fsample,
+        )
+
+        interpolated_eeg = np.array([
+            np.interp(interpolated_eeg_timestamps, normalized_eeg_timestamps, eeg[ch,:]) 
+            for ch in range(eeg.shape[0])
+        ])
+
+        return interpolated_eeg
 
     @abstractmethod
     def get_eeg_start_and_end_times(self, markers, timestamps):
