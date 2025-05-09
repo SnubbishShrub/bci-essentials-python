@@ -1,5 +1,4 @@
-from pylsl import StreamInfo, StreamOutlet, IRREGULAR_RATE
-
+from mne_lsl.lsl import StreamInfo, StreamOutlet
 from .messenger import Messenger
 from ..classification.generic_classifier import Prediction
 
@@ -16,10 +15,10 @@ class LslMessenger(Messenger):
         try:
             info = StreamInfo(
                 name="PythonResponse",
-                type="BCI",
-                channel_count=1,
-                nominal_srate=IRREGULAR_RATE,
-                channel_format="string",
+                stype="BCI",
+                n_channels=1,
+                sfreq=0,    # 0 means irregular rate
+                dtype="string",
                 source_id="pyp30042",
             )
             self.__outlet = StreamOutlet(info)

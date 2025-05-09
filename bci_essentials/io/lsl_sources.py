@@ -1,5 +1,4 @@
-from pylsl import StreamInlet, StreamInfo, resolve_byprop, FOREVER
-
+from mne_lsl.lsl import StreamInlet, StreamInfo, resolve_streams
 from .sources import MarkerSource, EegSource
 from ..utils.logger import Logger  # Logger wrapper
 
@@ -11,7 +10,7 @@ __all__ = ["LslMarkerSource", "LslEegSource"]
 
 
 class LslMarkerSource(MarkerSource):
-    def __init__(self, stream: StreamInfo = None, timeout: float = FOREVER):
+    def __init__(self, stream: StreamInfo = None, timeout: float = 600):
         """Create a MarkerSource object that obtains markers from an LSL outlet
 
         Parameters
@@ -19,13 +18,15 @@ class LslMarkerSource(MarkerSource):
         stream : StreamInfo, *optional*
             Provide stream to use for Markers, if not provided, stream will be discovered.
         timeout : float, *optional*
-            How long to wait for marker outlet stream to be discovered. If no stream is discovered, an Exception is raised.  By default init will wait forever.
+            How many seconds to wait for marker outlet stream to be discovered. 
+            If no stream is discovered, an Exception is raised.
+            By default init will wait 10 minutes.
         """
         try:
             if stream is None:
                 stream = discover_first_stream("LSL_Marker_Strings", timeout=timeout)
-            self.__inlet = StreamInlet(stream, processing_flags=0)
-            self.__info = self.__inlet.info()
+            self.__inlet = StreamInlet(stream)
+            self.__info = stream
         except Exception:
             raise Exception("LslMarkerSource: could not create inlet")
 
@@ -41,7 +42,7 @@ class LslMarkerSource(MarkerSource):
 
 
 class LslEegSource(EegSource):
-    def __init__(self, stream: StreamInfo = None, timeout: float = FOREVER):
+    def __init__(self, stream: StreamInfo = None, timeout: float = 600):
         """Create a MarkerSource object that obtains EEG from an LSL outlet
 
         Parameters
@@ -49,57 +50,56 @@ class LslEegSource(EegSource):
         stream : StreamInfo, *optional*
             Provide stream to use for EEG, if not provided, stream will be discovered.
         timeout : float, *optional*
-            How long to wait for marker stream to be discovered.  If no stream is
-            discovered, an Exception is raised.  By defalut init will wait forever.
+            How many seconds to wait for marker outlet stream to be discovered. 
+            If no stream is discovered, an Exception is raised.
+            By default init will wait 10 minutes.
         """
         try:
             if stream is None:
                 stream = discover_first_stream("EEG", timeout=timeout)
-            self.__inlet = StreamInlet(stream, processing_flags=0)
-            self.__info = self.__inlet.info()
+            self.__inlet = StreamInlet(stream)
+            self.__info = stream
         except Exception:
             raise Exception("LslEegSource: could not create inlet")
 
     @property
     def name(self) -> str:
-        return self.__info.name()
+        return self.__info.name
 
     @property
     def fsample(self) -> float:
-        return self.__info.nominal_srate()
+        return self.__info.sfreq
 
     @property
     def n_channels(self) -> int:
-        return self.__info.channel_count()
+        return self.__info.n_channels
 
     @property
     def channel_types(self) -> list[str]:
-        return self.get_channel_properties("type")
+        return [self.__info.stype] * self.n_channels
 
     @property
     def channel_units(self) -> list[str]:
-        return self.get_channel_properties("unit")
+        """Get channel units. Default to microvolts for EEG."""
+        try:
+            units = self.get_channel_properties('unit')
+            # If no units found or empty strings, use default
+            if not units or all(unit == "" for unit in units):
+                logger.warning("No channel units found, defaulting to microvolts")
+                units = ['µV'] * self.n_channels
+            return units
+        except Exception:
+            logger.warning("Could not get channel units, defaulting to microvolts")
+            return ['µV'] * self.n_channels
 
     @property
     def channel_labels(self) -> list[str]:
-        # Possible properties to use for labels, depends on headset used
-        label_properties = ["name", "label"]
-        output_labels = None
-
-        for prop in label_properties:
-            labels = self.get_channel_properties(prop)
-
-            # Check that labels are not empty strings
-            if labels and not any(label == "" for label in labels):
-                output_labels = labels
-                break
-
-        # If no valid labels found, create numbered channel names
-        if output_labels is None:
-            logger.warning("No valid channel labels found, using numbered channels")
-            output_labels = [f"Ch{i+1}" for i in range(self.n_channels)]
-
-        return output_labels
+        """Get channel labels. 
+        Uses ch_names if available, otherwise numbered channels.
+        """
+        if hasattr(self.__info, 'ch_names') and self.__info.ch_names:
+            return list(self.__info.ch_names)
+        return [f"Ch{i+1}" for i in range(self.n_channels)]
 
     def get_samples(self) -> tuple[list[list], list]:
         return pull_from_lsl_inlet(self.__inlet)
@@ -108,20 +108,36 @@ class LslEegSource(EegSource):
         return self.__inlet.time_correction()
 
     def get_channel_properties(self, property: str) -> list[str]:
-        properties = []
-        descriptions = self.__info.desc().child("channels").child("channel")
-        for i in range(self.n_channels):
-            value = descriptions.child_value(property)
-            properties.append(value)
-            descriptions = descriptions.next_sibling()
-        return properties
+        """Get channel properties from mne_lsl stream info.
+        
+        Parameters
+        ----------
+        property : str
+            Property to get ('name', 'unit', 'type', etc)
+        
+        Returns
+        -------
+        list[str]
+            List of property values for each channel
+        """
+        if property == 'name':
+            return self.name
+        elif property == "unit":
+            return [''] * self.n_channels 
+        elif property == "type":
+            return self.channel_types
+        elif property == "label":
+            return self.channel_labels
+        else:
+            logger.warning(f"Property '{property}' not supported in mne_lsl")
+            return [''] * self.n_channels
 
 
-def discover_first_stream(type: str, timeout: float = FOREVER) -> StreamInfo:
+def discover_first_stream(type: str, timeout: float = 600) -> StreamInfo:
     """This helper returns the first stream of the specified type.
 
     If no stream is found, an exception is raised."""
-    streams = resolve_byprop("type", type, timeout=timeout)
+    streams = resolve_streams(stype=type, timeout=timeout)
     return streams[0]
 
 
@@ -136,8 +152,8 @@ def pull_from_lsl_inlet(inlet: StreamInlet) -> tuple[list[list], list]:
     # read from inlet
     samples, timestamps = inlet.pull_chunk(timeout=0.1)
 
-    # convert None into empty lists
-    if samples is None:
+    # convert None or empty samples into empty lists
+    if samples is None or len(samples) == 0:
         samples = [[]]
         timestamps = []
 
