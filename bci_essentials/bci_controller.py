@@ -286,6 +286,12 @@ class BciController:
         `None`
 
         """
+        # Calculate sleep time based on the sampling rate
+        if self.fsample > 500:
+            sleep_time = 0.001
+        else:
+            sleep_time = 0.002
+
         # if offline, then all data is already loaded, only need to loop once
         if self.online is False:
             self.loops = max_loops - 1
@@ -298,6 +304,7 @@ class BciController:
 
         # start the main loop, stops after pulling new data, max_loops times
         while self.loops < max_loops:
+            loop_start_time = time.time()
             # print out loop status
             if self.loops % 100 == 0:
                 logger.debug(self.loops)
@@ -308,9 +315,11 @@ class BciController:
             # read from sources and process
             self.step()
 
-            # Wait a short period of time and then try to pull more data
+            # Dynamic timing to ensure the loop runs at fixed rate
             if self.online:
-                time.sleep(0.00001)
+                elapsed_time = time.time() - loop_start_time
+                if elapsed_time < sleep_time:
+                    time.sleep(sleep_time - elapsed_time)
 
             self.loops += 1
 
@@ -514,7 +523,9 @@ class BciController:
         end_index = np.where(timestamps < eeg_end_time)[0][-1]
 
         time_diffs = np.diff(timestamps[start_index:end_index])
-        if np.any(time_diffs > 2 / self.fsample):
+        expected_time_diff = 1 / self.fsample
+        max_allowed_time_diff = 4 * expected_time_diff
+        if np.any(time_diffs > max_allowed_time_diff):
             logger.warning("Time gaps in EEG data")
             return "Skip"
 

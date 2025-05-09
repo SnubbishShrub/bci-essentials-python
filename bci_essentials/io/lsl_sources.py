@@ -150,7 +150,7 @@ def pull_from_lsl_inlet(inlet: StreamInlet) -> tuple[list[list], list]:
     """
 
     # read from inlet
-    samples, timestamps = inlet.pull_chunk(timeout=0.1)
+    samples, timestamps = inlet.pull_chunk(timeout=0.001)
 
     # convert None or empty samples into empty lists
     if samples is None or len(samples) == 0:
