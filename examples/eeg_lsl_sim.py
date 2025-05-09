@@ -22,7 +22,7 @@ import sys
 import time
 import datetime
 
-from pylsl import StreamInfo, StreamOutlet
+from mne_lsl.lsl import StreamInfo, StreamOutlet
 
 # Import local bci_essentials
 from bci_essentials.io.xdf_sources import XdfEegSource, XdfMarkerSource
@@ -99,11 +99,9 @@ info = StreamInfo(
 )
 
 # add channel data
-channels = info.desc().append_child("channels")
-for c in eeg_source.channel_labels:
-    channels.append_child("channel").append_child_value("name", c).append_child_value(
-        "unit", "microvolts"
-    ).append_child_value("type", "EEG")
+info.ch_names = eeg_source.channel_labels
+info.units = ['µV'] * eeg_source.n_channels  # microvolts for all channels
+info.types = ['eeg'] * eeg_source.n_channels  # EEG type for all channels
 
 # create the EEG stream
 outlet = StreamOutlet(info)

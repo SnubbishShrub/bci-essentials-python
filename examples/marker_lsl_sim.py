@@ -20,7 +20,7 @@ import time
 import datetime
 import os
 
-from pylsl import StreamInfo, StreamOutlet
+from mne_lsl.lsl import StreamInfo, StreamOutlet
 
 from bci_essentials.io.xdf_sources import XdfEegSource, XdfMarkerSource
 from bci_essentials.utils.logger import Logger  # Logger wrapper
