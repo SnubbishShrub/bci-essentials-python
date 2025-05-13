@@ -98,10 +98,19 @@ info = StreamInfo(
     "mockeeg1",
 )
 
-# add channel data
+# add additional metadata
+# desc = info.desc
+# channels = desc.append_child("channels")
+# for i in range(eeg_source.n_channels):
+#     channel = channels.append_child("channel")
+#     channel.append_child_value("label", eeg_source.channel_labels[i])
+#     channel.append_child_value("unit", "microvolts")
+#     channel.append_child_value("type", "EEG")
+
 info.set_channel_names(eeg_source.channel_labels)
 info.set_channel_units(["microvolts"] * eeg_source.n_channels)  # microvolts for all channels
 info.set_channel_types(["EEG"] * eeg_source.n_channels)  # EEG type for all channels
+time.sleep(2.0)  # wait for the stream to be created with additional metadata
 
 # create the EEG stream
 outlet = StreamOutlet(info)

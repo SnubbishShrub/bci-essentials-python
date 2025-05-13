@@ -25,8 +25,10 @@ class LslMarkerSource(MarkerSource):
         try:
             if stream is None:
                 stream = discover_first_stream("LSL_Marker_Strings", timeout=timeout)
-            self.__inlet = StreamInlet(stream)
-            self.__info = stream
+            self._inlet = StreamInlet(stream)
+            self._inlet.open_stream(timeout=5)
+            self.__info = self._inlet.get_sinfo()
+            # self.__info = stream
         except Exception:
             raise Exception("LslMarkerSource: could not create inlet")
 
@@ -35,10 +37,10 @@ class LslMarkerSource(MarkerSource):
         return self.__info.name()
 
     def get_markers(self) -> tuple[list[list], list]:
-        return pull_from_lsl_inlet(self.__inlet)
+        return pull_from_lsl_inlet(self._inlet)
 
     def time_correction(self) -> float:
-        return self.__inlet.time_correction()
+        return self._inlet.time_correction()
 
 
 class LslEegSource(EegSource):
@@ -57,8 +59,10 @@ class LslEegSource(EegSource):
         try:
             if stream is None:
                 stream = discover_first_stream("EEG", timeout=timeout)
-            self.__inlet = StreamInlet(stream)
-            self.__info = stream
+            self._inlet = StreamInlet(stream)
+            self._inlet.open_stream(timeout=5)
+            self.__info = self._inlet.get_sinfo()
+            a = 0
         except Exception:
             raise Exception("LslEegSource: could not create inlet")
 
@@ -80,32 +84,42 @@ class LslEegSource(EegSource):
 
     @property
     def channel_units(self) -> list[str]:
-        """Get channel units. Default to microvolts for EEG."""
+        """Get channel units. Default to "microvolts"."""
         try:
             units = self.__info.get_channel_units()
             # If no units found or empty strings, use default
             if not units or all(unit == "" for unit in units):
                 logger.warning("No channel units found, defaulting to microvolts")
-                units = ['µV'] * self.n_channels
+                units = ['microvolts'] * self.n_channels
             return units
         except Exception:
             logger.warning("Could not get channel units, defaulting to microvolts")
-            return ['µV'] * self.n_channels
+            return ['microvolts'] * self.n_channels
 
     @property
     def channel_labels(self) -> list[str]:
-        """Get channel labels. 
-        Uses ch_names if available, otherwise numbered channels.
-        """
-        if hasattr(self.__info, 'ch_names') and self.__info.ch_names:
-            return list(self.__info.ch_names)
-        return [f"Ch{i+1}" for i in range(self.n_channels)]
+        """Get channel labels.  Default to Ch1, Ch2, etc."""
+
+        try:
+            ch_names = self.__info.get_channel_names()
+            # If no labels found or empty strings, use default
+            if not ch_names or all(label == "" for label in ch_names):
+                logger.warning("No channel labels found, defaulting to Ch1, Ch2, etc.")
+                ch_names = [f"Ch{i+1}" for i in range(self.n_channels)]
+            return ch_names
+        except Exception:
+            logger.warning("Could not get channel labels, defaulting to Ch1, Ch2, etc.")
+            return [f"Ch{i+1}" for i in range(self.n_channels)]
+
+        # if hasattr(self.__info, 'ch_names') and self.__info.ch_names:
+        #     return list(self.__info.ch_names)
+        # return [f"Ch{i+1}" for i in range(self.n_channels)]
 
     def get_samples(self) -> tuple[list[list], list]:
-        return pull_from_lsl_inlet(self.__inlet)
+        return pull_from_lsl_inlet(self._inlet)
 
     def time_correction(self) -> float:
-        return self.__inlet.time_correction()
+        return self._inlet.time_correction()
 
     def get_channel_properties(self, property: str) -> list[str]:
         """Get channel properties from mne_lsl stream info.

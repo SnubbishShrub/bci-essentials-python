@@ -525,8 +525,20 @@ class BciController:
         time_diffs = np.diff(timestamps[start_index:end_index])
         expected_time_diff = 1 / self.fsample
         max_allowed_time_diff = 4 * expected_time_diff
+        time_scaler = 1e3
         if np.any(time_diffs > max_allowed_time_diff):
-            logger.warning("Time gaps in EEG data")
+            # Only get statistics for gaps exceeding the threshold
+            gaps = time_diffs[time_diffs > max_allowed_time_diff]
+            gap_count = len(gaps)
+            
+            # Convert to milliseconds for readability with 2 decimal places
+            expected_time_diff_ms = expected_time_diff * time_scaler
+            mean_gap_ms = np.mean(gaps) * time_scaler
+            std_gap_ms = np.std(gaps) * time_scaler
+            max_gap_ms = np.max(gaps) * time_scaler
+            
+            logger.warning(f"Found {gap_count} time gaps exceeding {expected_time_diff_ms:.2f} ms threshold")
+            logger.warning(f"Gap statistics (ms): mean={mean_gap_ms:.2f}, std={std_gap_ms:.2f}, max={max_gap_ms:.2f}")
             return "Skip"
 
         X, y = self.__paradigm.process_markers(
