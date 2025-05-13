@@ -99,9 +99,9 @@ info = StreamInfo(
 )
 
 # add channel data
-info.ch_names = eeg_source.channel_labels
-info.units = ['µV'] * eeg_source.n_channels  # microvolts for all channels
-info.types = ['eeg'] * eeg_source.n_channels  # EEG type for all channels
+info.set_channel_names(eeg_source.channel_labels)
+info.set_channel_units(["microvolts"] * eeg_source.n_channels)  # microvolts for all channels
+info.set_channel_types(["EEG"] * eeg_source.n_channels)  # EEG type for all channels
 
 # create the EEG stream
 outlet = StreamOutlet(info)
