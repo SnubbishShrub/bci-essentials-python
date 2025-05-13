@@ -76,13 +76,13 @@ class LslEegSource(EegSource):
 
     @property
     def channel_types(self) -> list[str]:
-        return [self.__info.stype] * self.n_channels
+        return self.__info.get_channel_types()
 
     @property
     def channel_units(self) -> list[str]:
         """Get channel units. Default to microvolts for EEG."""
         try:
-            units = self.get_channel_properties('unit')
+            units = self.__info.get_channel_units()
             # If no units found or empty strings, use default
             if not units or all(unit == "" for unit in units):
                 logger.warning("No channel units found, defaulting to microvolts")
@@ -123,7 +123,7 @@ class LslEegSource(EegSource):
         if property == 'name':
             return self.name
         elif property == "unit":
-            return [''] * self.n_channels 
+            return self.channel_units
         elif property == "type":
             return self.channel_types
         elif property == "label":
