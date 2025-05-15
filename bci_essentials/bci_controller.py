@@ -380,7 +380,8 @@ class BciController:
 
         # apply time correction
         time_correction = self.__marker_source.time_correction()
-        timestamps = [timestamps[i] + time_correction for i in range(len(timestamps))]
+        timestamps = timestamps + time_correction
+        # timestamps = [timestamps[i] + time_correction for i in range(len(timestamps))]
 
         for i, marker in enumerate(markers):
             marker = marker[0]
@@ -388,6 +389,7 @@ class BciController:
                 continue
 
             # Add all markers to the controller
+            # We need to fix the use of append here, this is not efficient
             self.marker_data = np.append(self.marker_data, marker)
             self.marker_timestamps = np.append(self.marker_timestamps, timestamps[i])
 
@@ -442,7 +444,8 @@ class BciController:
 
         # apply time correction, this is essential for headsets like neurosity which have their own clock
         time_correction = self.__eeg_source.time_correction()
-        timestamps = [timestamps[i] + time_correction for i in range(len(timestamps))]
+        timestamps = timestamps + time_correction
+        # timestamps = [timestamps[i] + time_correction for i in range(len(timestamps))]
 
         self.__data_tank.add_raw_eeg(eeg.T, timestamps)
 
@@ -480,6 +483,8 @@ class BciController:
 
         return True  # Continue processing
 
+# This is where some problems are occuring. 
+# Importantly we should be splitting this - why are we doing two things per function.
     def __process_and_classify(self):
         """Process the markers and classify the data.
 

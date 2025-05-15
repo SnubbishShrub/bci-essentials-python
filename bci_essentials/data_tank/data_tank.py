@@ -1,5 +1,6 @@
 import numpy as np
 from ..utils.logger import Logger  # Logger wrapper
+import time
 
 # Instantiate a logger for the module at the default level of logging.INFO
 # Logs to bci_essentials.__module__) where __module__ is the name of the module
@@ -9,7 +10,7 @@ logger = Logger(name=__name__)
 # Will eventually move somewhere else
 class DataTank:
     """
-    DataTank class is for storing raw EEG, markers, epochs, and rtesting state data
+    DataTank class is for storing raw EEG, markers, epochs, and resting state data
 
     TODO: Add your desired flavour of save output from here.
     To be added:
@@ -94,9 +95,15 @@ class DataTank:
             self.__raw_eeg = new_raw_eeg
             self.__raw_eeg_timestamps = new_eeg_timestamps
         else:
+            # Add timeit to see how long this takes
+            time_start = time.time()
             self.__raw_eeg = np.concatenate((self.__raw_eeg, new_raw_eeg), axis=1)
             self.__raw_eeg_timestamps = np.concatenate(
                 (self.__raw_eeg_timestamps, new_eeg_timestamps)
+            )
+            time_end = time.time()
+            logger.info(
+                f"Time to add raw EEG data: {time_end - time_start:.9f} seconds"
             )
 
         self.latest_eeg_timestamp = new_eeg_timestamps[-1]
@@ -181,8 +188,19 @@ class DataTank:
             if X.shape[1:] != self.epochs.shape[1:]:
                 logger.warning("Epochs are not the same size, skipping this data.")
             else:
+                # Time this as well
+                time_start = time.time()
                 self.epochs = np.concatenate((self.epochs, np.array(X)))
+                time_end = time.time()
+                logger.info(
+                    f"Time to add epochs: {time_end - time_start:.9f} seconds"
+                )
+                time_start = time.time()
                 self.labels = np.concatenate((self.labels, np.array(y)))
+                time_end = time.time()
+                logger.info(
+                    f"Time to add labels: {time_end - time_start:.9f} seconds"
+                )
 
     def get_epochs(self, latest=False):
         """
