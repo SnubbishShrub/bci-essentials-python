@@ -10,13 +10,15 @@ __all__ = ["LslMarkerSource", "LslEegSource"]
 
 
 class LslMarkerSource(MarkerSource):
-    def __init__(self, stream: StreamInfo = None, timeout: float = 600):
+    def __init__(self, stream: StreamInfo = None, buffer_size: int = 5, timeout: float = 600):
         """Create a MarkerSource object that obtains markers from an LSL outlet
 
         Parameters
         ----------
         stream : StreamInfo, *optional*
             Provide stream to use for Markers, if not provided, stream will be discovered.
+        buffer_size : int, *optional*
+            Size of the buffer is `buffer_size * 100`. Default is 5 (i.e., 500 samples). 
         timeout : float, *optional*
             How many seconds to wait for marker outlet stream to be discovered. 
             If no stream is discovered, an Exception is raised.
@@ -25,7 +27,7 @@ class LslMarkerSource(MarkerSource):
         try:
             if stream is None:
                 stream = discover_first_stream("LSL_Marker_Strings", timeout=timeout)
-            self._inlet = StreamInlet(stream)
+            self._inlet = StreamInlet(stream, max_buffered=buffer_size)
             self._inlet.open_stream(timeout=5)
             self.__info = self._inlet.get_sinfo()
             # self.__info = stream
@@ -34,7 +36,7 @@ class LslMarkerSource(MarkerSource):
 
     @property
     def name(self) -> str:
-        return self.__info.name()
+        return self.__info.name
 
     def get_markers(self) -> tuple[list[list], list]:
         return pull_from_lsl_inlet(self._inlet)
@@ -44,13 +46,15 @@ class LslMarkerSource(MarkerSource):
 
 
 class LslEegSource(EegSource):
-    def __init__(self, stream: StreamInfo = None, timeout: float = 600):
+    def __init__(self, stream: StreamInfo = None, buffer_size: int = 5,timeout: float = 600):
         """Create a MarkerSource object that obtains EEG from an LSL outlet
 
         Parameters
         ----------
         stream : StreamInfo, *optional*
             Provide stream to use for EEG, if not provided, stream will be discovered.
+        buffer_size : int, *optional*
+            Size of the buffer to use for the inlet in seconds. Default is 5.
         timeout : float, *optional*
             How many seconds to wait for marker outlet stream to be discovered. 
             If no stream is discovered, an Exception is raised.
@@ -59,7 +63,7 @@ class LslEegSource(EegSource):
         try:
             if stream is None:
                 stream = discover_first_stream("EEG", timeout=timeout)
-            self._inlet = StreamInlet(stream)
+            self._inlet = StreamInlet(stream, max_buffered=buffer_size)
             self._inlet.open_stream(timeout=5)
             self.__info = self._inlet.get_sinfo()
             a = 0

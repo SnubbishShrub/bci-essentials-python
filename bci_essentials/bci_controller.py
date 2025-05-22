@@ -121,9 +121,13 @@ class BciController:
         logger.info(self.headset_string)
         logger.info(self.channel_labels)
 
+        # Lists for appending data
+        self._marker_data_list = []
+        self._marker_timestamps_list = []
+
         # Initialize data and timestamp arrays to the right dimensions, but zero elements
-        self.marker_data = np.zeros((0, 1))
-        self.marker_timestamps = np.zeros((0))
+        self.marker_data = np.array([])
+        self.marker_timestamps = np.array([])
         self.bci_controller = np.zeros((0, self.n_channels))
         self.eeg_timestamps = np.zeros((0))
 
@@ -426,7 +430,7 @@ class BciController:
         # if time is in milliseconds, divide by 1000, works for sampling rates above 10Hz
         try:
             if self.time_units == "milliseconds":
-                timestamps = [(timestamps[i] / 1000) for i in range(len(timestamps))]
+                timestamps = timestamps / 1000
 
         # If time units are not defined then define them
         except Exception:
@@ -437,7 +441,7 @@ class BciController:
                 dif_high -= 1
 
             if timestamps[dif_high] - timestamps[dif_low] > 0.1:
-                timestamps = [(timestamps[i] / 1000) for i in range(len(timestamps))]
+                timestamps = timestamps / 1000
                 self.time_units = "milliseconds"
             else:
                 self.time_units = "seconds"
@@ -445,7 +449,6 @@ class BciController:
         # apply time correction, this is essential for headsets like neurosity which have their own clock
         time_correction = self.__eeg_source.time_correction()
         timestamps = timestamps + time_correction
-        # timestamps = [timestamps[i] + time_correction for i in range(len(timestamps))]
 
         self.__data_tank.add_raw_eeg(eeg.T, timestamps)
 
