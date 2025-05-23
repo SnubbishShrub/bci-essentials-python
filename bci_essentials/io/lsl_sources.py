@@ -63,7 +63,7 @@ class LslEegSource(EegSource):
         try:
             if stream is None:
                 stream = discover_first_stream("EEG", timeout=timeout)
-            self._inlet = StreamInlet(stream, max_buffered=buffer_size)
+            self._inlet = StreamInlet(stream, max_buffered=buffer_size, processing_flags=['dejitter'])
             self._inlet.open_stream(timeout=5)
             self.__info = self._inlet.get_sinfo()
             a = 0
