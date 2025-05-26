@@ -528,7 +528,11 @@ class BciController:
             logger.warning("No timestamps exceed eeg_start_time")
             return "Skip"
         start_index = start_indices[0]
-        end_index = np.where(timestamps < eeg_end_time)[0][-1]
+        end_indices = np.where(timestamps < eeg_end_time)[0]
+        if len(end_indices) == 0:
+            logger.warning("No timestamps exceed eeg_end_time")
+            return "Skip"
+        end_index = end_indices[-1]
 
         time_diffs = np.diff(timestamps[start_index:end_index])
         expected_time_diff = 1 / self.fsample

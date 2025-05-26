@@ -1,6 +1,5 @@
 import numpy as np
 from ..utils.logger import Logger  # Logger wrapper
-import time
 
 # Instantiate a logger for the module at the default level of logging.INFO
 # Logs to bci_essentials.__module__) where __module__ is the name of the module
@@ -20,7 +19,7 @@ class DataTank:
     - XDF
     """
 
-    def __init__(self, max_samples: int = 100000):
+    def __init__(self, max_samples: int = 100000, max_epochs: int = 1000):
         """
         Initialize the DataTank.
 
@@ -29,6 +28,9 @@ class DataTank:
         max_samples : int
             The maximum number of samples to store in the DataTank. 
             Default is 100,000 (i.e., ~100 sec at 100 Hz).
+        max_epochs : int
+            The maximum number of epochs to store in the DataTank.
+            Default is 1000 epochs.
         """
 
         # Buffer configuration
@@ -54,8 +56,13 @@ class DataTank:
 
         # Keep track of how many epochs have been sent
         self.epochs_sent = 0
-        self.epochs = np.zeros((0, 0, 0))
-        self.labels = np.zeros((0))
+        self.max_epochs = max_epochs
+        self._epochs_write_index = 0
+        self._epochs_written = 0
+        
+        # Will be initialized when first epoch is added
+        self.__epochs_buffer = None
+        self.__labels_buffer = None
         
         self.__resting_state_data = None
 
@@ -375,33 +382,22 @@ class DataTank:
         X = np.array(X)
         y = np.array(y)
 
-        # Convert to lists for efficient appending, then back to numpy when needed
-        if not hasattr(self, '_epochs_list'):
-            # Initialize lists from existing arrays
-            self._epochs_list = self.epochs.tolist() if self.epochs.size > 0 else []
-            self._labels_list = self.labels.tolist() if self.labels.size > 0 else []
+        # Initialize buffer
+        if self.__epochs_buffer is None:
+            [_, n_channels, n_samples] = X.shape
+            self.__epochs_buffer = np.zeros((self.max_epochs, n_channels, n_samples), dtype=np.float32)
+            self.__labels_buffer = np.zeros(self.max_epochs, dtype=np.int32)
 
-        # Simple shape check without creating temporary arrays
-        if (len(self._epochs_list) > 0 and 
-            len(X.shape) == 3 and 
-            len(self._epochs_list[0]) != X.shape[1]):  # Check n_channels
-            logger.warning("Epochs have different number of channels, skipping this data.")
-            return
-
-        # Append to lists (much faster than np.concatenate)
-        for epoch, label in zip(X, y):
-            self._epochs_list.append(epoch.tolist())
-            self._labels_list.append(label)
-
-        # Update numpy arrays periodically (every 10 epochs) or when accessed
-        if len(self._epochs_list) % 10 == 0:
-            self._sync_epochs()
-
-    def _sync_epochs(self):
-        """Convert epoch lists back to numpy arrays."""
-        if hasattr(self, '_epochs_list') and len(self._epochs_list) > 0:
-            self.epochs = np.array(self._epochs_list)
-            self.labels = np.array(self._labels_list)
+        # Add data to circular buffer
+        n_written = self._add_to_circular_buffer(
+            self.__epochs_buffer, X, self._epochs_write_index, self.max_epochs
+        )
+        self._add_to_circular_buffer(
+            self.__labels_buffer, y, self._epochs_write_index, self.max_epochs
+        )
+        
+        self._epochs_write_index += n_written
+        self._epochs_written += n_written
 
     def get_epochs(self, latest=False):
         """
@@ -420,26 +416,50 @@ class DataTank:
             The labels of the epochs. Shape is (n_epochs).
 
         """
-        # Sync any pending epochs
-        if hasattr(self, '_epochs_list'):
-            self._sync_epochs()
-
-        if self.epochs.size == 0:
+        if self.__epochs_buffer is None:
             logger.warning("Data tank contains no epochs, returning empty arrays.")
             return np.array([]), np.array([])
-
+            
         if latest:
-            # Return only new epochs
-            if self.epochs_sent >= len(self.epochs):
+            # Check if there are new epochs since last call
+            if self.epochs_sent >= self._epochs_written:
+                # No new epochs
                 return np.array([]), np.array([])
             
-            new_epochs = self.epochs[self.epochs_sent:]
-            new_labels = self.labels[self.epochs_sent:]
-            self.epochs_sent = len(self.epochs)
+            # Calculate how many new epochs to return
+            if self._epochs_written <= self.max_epochs:
+                # Buffer not full yet - simple case
+                start_idx = self.epochs_sent
+                end_idx = self._epochs_written
+                new_epochs = self.__epochs_buffer[start_idx:end_idx]
+                new_labels = self.__labels_buffer[start_idx:end_idx]
+            else:
+                # Buffer is full - more complex case
+                # This is tricky with circular buffers since old data gets overwritten
+                # For now, just return all epochs and warn
+                logger.warning("Latest epochs retrieval not fully supported when buffer is full. Returning all epochs.")
+                new_epochs, new_labels = self._get_from_circular_buffer(
+                    self.__epochs_buffer, None, self._epochs_write_index, 
+                    self._epochs_written, self.max_epochs
+                ), self._get_from_circular_buffer(
+                    self.__labels_buffer, None, self._epochs_write_index,
+                    self._epochs_written, self.max_epochs
+                )
+            
+            # Update epochs_sent
+            self.epochs_sent = self._epochs_written
             return new_epochs, new_labels
-        else:
-            # Return all epochs
-            return self.epochs, self.labels
+        else: 
+            epochs = self._get_from_circular_buffer(
+                self.__epochs_buffer, None, self._epochs_write_index, 
+                self._epochs_written, self.max_epochs
+            )
+            labels = self._get_from_circular_buffer(
+                self.__labels_buffer, None, self._epochs_write_index,
+                self._epochs_written, self.max_epochs
+            )
+
+        return epochs, labels
 
     def add_resting_state_data(self, resting_state_data):
         """
