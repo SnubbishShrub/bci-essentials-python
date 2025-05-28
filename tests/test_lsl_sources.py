@@ -102,13 +102,15 @@ class LslSender:
         )
 
         # Add EEG channel data like in eeg_lsl_sim.py
-        # if streamtype == "EEG":
-        #     ch_info = info.desc().append_child("channels")
-        #     for c in range(channels):
-        #         ch = ch_info.append_child("channel")
-        #         ch.append_child_value("name", str(c))
-        #         ch.append_child_value("unit", "microvolts")
-        #         ch.append_child_value("type", "EEG")
+        ch_info = info.desc.append_child("channels")
+        for c in range(channels):
+            # Use standard EEG channel names (FP1, FP2, etc.) if available
+            eeg_names = ["FP1", "FP2", "F3", "F4", "C3", "C4", "P3", "P4"]
+            ch_name = eeg_names[c] if c < len(eeg_names) else f"CH{c+1}"
+            # Use method chaining like in eeg_lsl_sim.py
+            ch_info.append_child("channel").append_child_value("name", ch_name).append_child_value(
+                "unit", "microvolts"
+            ).append_child_value("type", "EEG")
 
         self.__outlet = StreamOutlet(info)
         self.__mark_count: float = 0.0
