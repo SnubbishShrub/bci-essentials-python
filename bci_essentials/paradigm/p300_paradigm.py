@@ -111,7 +111,7 @@ class P300Paradigm(Paradigm):
             # Convert 1-indexed target to array index
             train_target_array_index = train_target - 1
             y[train_target_array_index] = 1
-        if train_target is -1:  # Set all values of y to -1
+        if train_target == -1:  # Set all values of y to -1
             y = np.full(num_objects, -1)
 
         flash_counts = np.zeros(num_objects)
