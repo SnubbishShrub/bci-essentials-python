@@ -73,7 +73,6 @@ class LslEegSource(EegSource):
             )
             self._inlet.open_stream(timeout=5)
             self.__info = self._inlet.get_sinfo()
-            a = 0
         except Exception:
             raise Exception("LslEegSource: could not create inlet")
 
