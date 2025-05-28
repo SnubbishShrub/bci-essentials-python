@@ -108,7 +108,9 @@ info = StreamInfo(
 #     channel.append_child_value("type", "EEG")
 
 info.set_channel_names(eeg_source.channel_labels)
-info.set_channel_units(["microvolts"] * eeg_source.n_channels)  # microvolts for all channels
+info.set_channel_units(
+    ["microvolts"] * eeg_source.n_channels
+)  # microvolts for all channels
 info.set_channel_types(["EEG"] * eeg_source.n_channels)  # EEG type for all channels
 time.sleep(2.0)  # wait for the stream to be created with additional metadata
 

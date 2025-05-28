@@ -18,7 +18,7 @@ class TestLslSourceTimeouts(unittest.TestCase):
 class TestLslMarkerSource(unittest.TestCase):
     def setUp(self) -> None:
         self.sender = LslSender("LSL_Marker_Strings", 1)
-        time.sleep(0.5) # Sleep for a bit to ensure the outlet is ready
+        time.sleep(0.5)  # Sleep for a bit to ensure the outlet is ready
         self.source = LslMarkerSource()
 
     def test_marker_name(self):
@@ -39,7 +39,7 @@ class TestLslMarkerSource(unittest.TestCase):
 class TestLslEegSource(unittest.TestCase):
     def setUp(self) -> None:
         self.sender = LslSender("EEG", 8, 128.0)
-        time.sleep(0.5) # Sleep for a bit to ensure the outlet is ready
+        time.sleep(0.5)  # Sleep for a bit to ensure the outlet is ready
         self.source = LslEegSource()
 
     def test_marker_name(self):
@@ -80,9 +80,9 @@ class TestLslEegSource(unittest.TestCase):
 
 class LslSender:
     def __init__(self, streamtype: str, channels: int, rate: float = 0):
-        '''
+        """
         Create a LSL outlet for sending markers or EEG data.
-        
+
         Parameters
         ----------
         streamtype : str
@@ -91,7 +91,7 @@ class LslSender:
             The number of channels in the stream.
         rate : float, optional
             The sampling frequency of the stream. Default is 0, which means irregular rate.
-        '''
+        """
         info = StreamInfo(
             name=f"LSL Test {streamtype}",
             stype=streamtype,
@@ -108,9 +108,9 @@ class LslSender:
             eeg_names = ["FP1", "FP2", "F3", "F4", "C3", "C4", "P3", "P4"]
             ch_name = eeg_names[c] if c < len(eeg_names) else f"CH{c+1}"
             # Use method chaining like in eeg_lsl_sim.py
-            ch_info.append_child("channel").append_child_value("name", ch_name).append_child_value(
-                "unit", "microvolts"
-            ).append_child_value("type", "EEG")
+            ch_info.append_child("channel").append_child_value(
+                "name", ch_name
+            ).append_child_value("unit", "microvolts").append_child_value("type", "EEG")
 
         self.__outlet = StreamOutlet(info)
         self.__mark_count: float = 0.0
