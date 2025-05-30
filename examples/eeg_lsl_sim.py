@@ -22,7 +22,7 @@ import sys
 import time
 import datetime
 
-from pylsl import StreamInfo, StreamOutlet
+from mne_lsl.lsl import StreamInfo, StreamOutlet
 
 # Import local bci_essentials
 from bci_essentials.io.xdf_sources import XdfEegSource, XdfMarkerSource
@@ -98,12 +98,21 @@ info = StreamInfo(
     "mockeeg1",
 )
 
-# add channel data
-channels = info.desc().append_child("channels")
-for c in eeg_source.channel_labels:
-    channels.append_child("channel").append_child_value("name", c).append_child_value(
-        "unit", "microvolts"
-    ).append_child_value("type", "EEG")
+# add additional metadata
+# desc = info.desc
+# channels = desc.append_child("channels")
+# for i in range(eeg_source.n_channels):
+#     channel = channels.append_child("channel")
+#     channel.append_child_value("label", eeg_source.channel_labels[i])
+#     channel.append_child_value("unit", "microvolts")
+#     channel.append_child_value("type", "EEG")
+
+info.set_channel_names(eeg_source.channel_labels)
+info.set_channel_units(
+    ["microvolts"] * eeg_source.n_channels
+)  # microvolts for all channels
+info.set_channel_types(["EEG"] * eeg_source.n_channels)  # EEG type for all channels
+time.sleep(2.0)  # wait for the stream to be created with additional metadata
 
 # create the EEG stream
 outlet = StreamOutlet(info)
