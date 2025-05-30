@@ -1,6 +1,6 @@
+import time
 import unittest
-
-from pylsl import StreamInfo, StreamOutlet, IRREGULAR_RATE
+from mne_lsl.lsl import StreamInfo, StreamOutlet
 
 from bci_essentials.io.lsl_sources import LslMarkerSource, LslEegSource
 
@@ -18,10 +18,11 @@ class TestLslSourceTimeouts(unittest.TestCase):
 class TestLslMarkerSource(unittest.TestCase):
     def setUp(self) -> None:
         self.sender = LslSender("LSL_Marker_Strings", 1)
+        time.sleep(0.5)  # Sleep for a bit to ensure the outlet is ready
         self.source = LslMarkerSource()
 
     def test_marker_name(self):
-        self.assertEqual(self.source.name, "LSL Test")
+        self.assertEqual(self.source.name, "LSL Test LSL_Marker_Strings")
 
     # def test_get_marker(self):
     #     self.sender.mark()
@@ -38,10 +39,11 @@ class TestLslMarkerSource(unittest.TestCase):
 class TestLslEegSource(unittest.TestCase):
     def setUp(self) -> None:
         self.sender = LslSender("EEG", 8, 128.0)
+        time.sleep(0.5)  # Sleep for a bit to ensure the outlet is ready
         self.source = LslEegSource()
 
     def test_marker_name(self):
-        self.assertEqual(self.source.name, "LSL Test")
+        self.assertEqual(self.source.name, "LSL Test EEG")
 
     def test_eeg_fsample(self):
         self.assertEqual(self.source.fsample, 128.0)
@@ -77,10 +79,39 @@ class TestLslEegSource(unittest.TestCase):
 
 
 class LslSender:
-    def __init__(self, streamtype: str, channels: int, rate: float = IRREGULAR_RATE):
+    def __init__(self, streamtype: str, channels: int, rate: float = 0):
+        """
+        Create a LSL outlet for sending markers or EEG data.
+
+        Parameters
+        ----------
+        streamtype : str
+            The type of the stream, e.g., "EEG" or "LSL_Marker_Strings".
+        channels : int
+            The number of channels in the stream.
+        rate : float, optional
+            The sampling frequency of the stream. Default is 0, which means irregular rate.
+        """
         info = StreamInfo(
-            "LSL Test", streamtype, channels, rate, channel_format="float32"
+            name=f"LSL Test {streamtype}",
+            stype=streamtype,
+            n_channels=channels,
+            sfreq=rate,
+            dtype="float32",
+            source_id=f"test-{streamtype}-{channels}-{rate}",
         )
+
+        # Add EEG channel data like in eeg_lsl_sim.py
+        ch_info = info.desc.append_child("channels")
+        for c in range(channels):
+            # Use standard EEG channel names (FP1, FP2, etc.) if available
+            eeg_names = ["FP1", "FP2", "F3", "F4", "C3", "C4", "P3", "P4"]
+            ch_name = eeg_names[c] if c < len(eeg_names) else f"CH{c+1}"
+            # Use method chaining like in eeg_lsl_sim.py
+            ch_info.append_child("channel").append_child_value(
+                "name", ch_name
+            ).append_child_value("unit", "microvolts").append_child_value("type", "EEG")
+
         self.__outlet = StreamOutlet(info)
         self.__mark_count: float = 0.0
 
