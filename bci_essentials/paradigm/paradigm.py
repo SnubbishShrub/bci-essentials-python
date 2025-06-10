@@ -22,8 +22,8 @@ class Paradigm(ABC):
         channel_subset : list of str | None
             Channel subset to use.
         """
-        self.lowcut = filters[0]
-        self.highcut = filters[1]
+        #self.lowcut = filters[0] ###
+        #self.highcut = filters[1] ###
         self.channel_subset = channel_subset
 
         # When do we return classifications?
@@ -100,7 +100,7 @@ class Paradigm(ABC):
                 "Preprocessing failed. EEG must be 2D (continuous) or 3D (epoched)."
             )
 
-        return preprocessed_eeg
+        return eeg # Don't filter the data
 
     def package_resting_state_data(
         self, marker_data, marker_timestamps, bci_controller, eeg_timestamps, fsample
