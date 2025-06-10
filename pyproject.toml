@@ -17,6 +17,7 @@ dependencies = [
 	"wheel",
 	"pyriemann",
 	"imblearn",
+	"mne-lsl",
 ]
 
 [tool.setuptools.packages.find]
