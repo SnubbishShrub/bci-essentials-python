@@ -52,7 +52,7 @@ except Exception:
 # Filename assumes the data is within a subfolder called "data" located
 # within the same folder as this script
 VALID_PARADIGMS = ["p300", "ssvep", "mi"]
-try: 
+try:
     paradigm = sys.argv[3]
     if paradigm not in VALID_PARADIGMS:
         raise IndexError()
