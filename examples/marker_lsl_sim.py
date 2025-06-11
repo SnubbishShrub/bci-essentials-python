@@ -6,6 +6,7 @@ Marker LSL sim simulates offline data as online data
 Additional Arguments:
 now (-n)            -   start the stream immediately
 num_loops (int)     -   number of times to repeat the stream
+paradigm (str)      -   paradigm to simulate (p300 (default), ssvep, mi)
 
 ex.
 >python marker_lsl_sim.py now 8
@@ -28,11 +29,6 @@ from bci_essentials.utils.logger import Logger  # Logger wrapper
 # Instantiate a logger for the module at the default level of logging.INFO
 logger = Logger(name="marker_lsl_sim")
 
-# Identify the file to simulate
-# Filename assumes the data is within a subfolder called "data" located
-# within the same folder as this script
-filename = os.path.join("data", "p300_example.xdf")
-
 # check whether to start now, or at the next even minute to sync with other programs
 start_now = False
 try:
@@ -51,6 +47,21 @@ try:
 
 except Exception:
     nloops = 1
+
+# Identify the file to simulate
+# Filename assumes the data is within a subfolder called "data" located
+# within the same folder as this script
+VALID_PARADIGMS = ["p300", "ssvep", "mi"]
+try: 
+    paradigm = sys.argv[3]
+    if paradigm not in VALID_PARADIGMS:
+        raise IndexError()
+    logger.info(f"Simulating paradigm: {paradigm}")
+except IndexError:
+    paradigm = "p300"  # Default value
+    logger.warning("Incorrect or no paradigm specified, defaulting to p300")
+
+filename = os.path.join("data", f"{paradigm}_example.xdf")
 
 # Load the example EEG / marker streams
 marker_source = XdfMarkerSource(filename)
