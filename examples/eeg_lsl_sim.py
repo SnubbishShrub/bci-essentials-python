@@ -50,10 +50,20 @@ try:
 except Exception:
     nloops = 1
 
+# Identify the file to simulate
+# Filename assumes the data is within a subfolder called "data" located
+# within the same folder as this script
+VALID_PARADIGMS = ["p300", "ssvep", "mi"]
 try:
     paradigm = sys.argv[3]
+    if paradigm not in VALID_PARADIGMS:
+        raise IndexError()
+    logger.info(f"Simulating paradigm: {paradigm}")
 except IndexError:
     paradigm = "p300"  # Default value
+    logger.warning("Incorrect or no paradigm specified, defaulting to p300")
+
+filename = os.path.join("data", f"{paradigm}_example.xdf")
 
 # Check for defect to simulate
 simulate_packet_loss = False
@@ -65,12 +75,6 @@ try:
 
 except IndexError:
     defect = "none"
-
-
-# Identify the file to simulate
-# Filename assumes the data is within a subfolder called "data" located
-# within the same folder as this script
-filename = os.path.join("data", f"{paradigm}_example.xdf")
 
 # Load the example EEG / marker streams
 marker_source = XdfMarkerSource(filename)
