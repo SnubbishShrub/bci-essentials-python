@@ -22,15 +22,15 @@ logger = Logger(name=__name__)
 # Settings
 target_frequencies = np.array([6.25, 10, 11.11111, 14.28571])
 n_harmonics = 3  # Number of harmonics to use for SSVEP classification
-fb_cutoffs = np.array([[i, 27] for i in range(3, 25, 2)])   # Filter bank cut-off frequencies
-filter_order = 6
+fb_cutoffs = np.array([[i, 31] for i in range(3, 29, 2)])   # Filter bank cut-off frequencies
+#filter_order = 6
 nsamples = 5 * 256  # 5 seconds of data at 256 Hz
 fsample = 256.0  # Hz
 concatenate_trials = True  # Concatenate trials for training
 
 classifier = SsvepFbCcaClassifier(subset=["O1", "Oz", "O2"])
 classifier.set_ssvep_settings(
-    fsample=256.0,
+    fsample=fsample,
     n_harmonics=n_harmonics,  # Number of harmonics to use for SSVEP classification
     target_freqs=target_frequencies,
     n_samples=nsamples,

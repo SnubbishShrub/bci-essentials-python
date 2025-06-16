@@ -282,13 +282,16 @@ class ErpRgClassifier(GenericClassifier):
                 logger.debug("real = %s", real[0])
                 logger.debug("prediction = %s", prediction)
 
+            # Train final model with all available data
+            self.clf.fit(X, y)
             model = self.clf
 
-            accuracy = sum(preds == self.y) / len(preds)
-            precision = precision_score(self.y, preds)
-            recall = recall_score(self.y, preds)
+            training_preds = self.clf.predict(X)
+            accuracy = sum(training_preds == self.y) / len(training_preds)
+            precision = precision_score(self.y, training_preds)
+            recall = recall_score(self.y, training_preds)
 
-            return KernelResults(model, preds, accuracy, precision, recall)
+            return KernelResults(model, training_preds, accuracy, precision, recall)
 
         # Check if channel selection is true
         if self.channel_selection_setup:
@@ -362,8 +365,7 @@ class ErpRgClassifier(GenericClassifier):
             plt.show()
 
         if plot_roc:
-            logger.info("Plotting the ROC...")
-            logger.error("Just kidding ROC has not been implemented")
+            logger.error("ROC plot has not been implemented yet")
 
     def predict(self, X):
         """Predict the class of the data (Unused in this classifier)

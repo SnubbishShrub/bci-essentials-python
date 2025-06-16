@@ -37,7 +37,7 @@ class SsvepParadigm(Paradigm):
             Defines the time in seconds after an epoch for which we require EEG data to ensure that all EEG is present in that epoch.
             - Default is `0.01`.
         """
-        super().__init__(filters)
+        #super().__init__(filters)
 
         self.live_update = live_update
         self.iterative_training = iterative_training
@@ -71,7 +71,6 @@ class SsvepParadigm(Paradigm):
         """
         start_time = timestamps[0] - self.buffer_time
 
-        #this previously was indexing at [-1] and not getting the window length (changed to [3])
         end_time = timestamps[-1] + float(markers[-1].split(",")[3]) + self.buffer_time
 
         return start_time, end_time
@@ -130,7 +129,7 @@ class SsvepParadigm(Paradigm):
                 )
 
             epoch_eeg[0, :, :] = super()._preprocess(
-                epoch_eeg[0, :, :], fsample, self.lowcut, self.highcut
+                epoch_eeg[0, :, :], fsample, 0, 0 #self.lowcut, self.highcut #0, 0
             )
 
             if i == 0:

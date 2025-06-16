@@ -1,12 +1,15 @@
-"""
+"""Channel selection methods for BCI performance improvement.
+
 This module includes functions for selecting channels in order to
 improve BCI performance.
 
+Notes
+-----
 The EEG data input for each function is a set of trials. The data must
 be of the shape `n_trials x n_channels x n_samples`, where:
-- n_trials = number of trials
-- n_channels = number of channels
-- n_samples = number of samples
+    - n_trials = number of trials
+    - n_channels = number of channels
+    - n_samples = number of samples
 
 """
 
@@ -25,29 +28,25 @@ logger = Logger(name=__name__)
 
 @dataclass
 class ChannelSelectionOutput:
-    """
-    Dataclass to store output from channel selection.
+    """Dataclass to store output from channel selection.
 
+    Parameters
+    ----------
     best_channel_subset : list of `str`
         The best channel subset from the list of 'channel_labels'.
-
     best_model : classifier
         The trained classification model.
-
     best_preds : numpy.ndarray
         The predictions from the model.
-
     best_accuracy : float
         The accuracy of the trained classification model.
-
     best_precision : float
         The precision of the trained classification model.
-
     best_recall : float
         The recall of the trained classification model.
-
     results_df : pandas.DataFrame
         A dataframe containing the performance metrics at each step.
+
     """
 
     best_channel_subset: list = field(default_factory=list)
@@ -511,7 +510,7 @@ def __sfs(
         recall = recalls[best_set_index]
         logger.debug("New subset: %s", new_channel_subset)
         logger.debug("Accuracy: %s", accuracy)
-        logger.debug("Accuracies: %s", accuracies)
+        logger.debug("Accuracies: %s", [float(acc) for acc in accuracies])
 
         if metric == "accuracy":
             current_performance = accuracy
@@ -795,7 +794,7 @@ def __sbs(
         logger.debug("Removed a channel")
         logger.debug("New subset: %s", new_channel_subset)
         logger.debug("Accuracy: %s", accuracy)
-        logger.debug("Accuracies: %s", accuracies)
+        logger.debug("Accuracies: %s", [float(acc) for acc in accuracies])
 
         p_delta = current_performance - previous_performance
         previous_performance = current_performance
@@ -1093,7 +1092,7 @@ def __sbfs(
         logger.debug("Removed a channel")
         logger.debug("New subset: %s", new_channel_subset)
         logger.debug("Accuracy: %s", accuracy)
-        logger.debug("Accuracies: %s", accuracies)
+        logger.debug("Accuracies: %s", [float(acc) for acc in accuracies])
 
         current_performance = best_round_performance
 
@@ -1231,7 +1230,7 @@ def __sbfs(
                 logger.debug("Added back a channel")
                 logger.debug("New subset: %s", new_channel_subset)
                 logger.debug("Accuracy: %s", accuracy)
-                logger.debug("Accuracies: %s", accuracies)
+                logger.debug("Accuracies: %s", [float(acc) for acc in accuracies])
 
                 current_performance = best_round_performance
 
@@ -1547,7 +1546,7 @@ def __sffs(
         logger.debug("Removed a channel")
         logger.debug("New subset: %s", new_channel_subset)
         logger.debug("Accuracy: %s", accuracy)
-        logger.debug("Accuracies: %s", accuracies)
+        logger.debug("Accuracies: %s", [float(acc) for acc in accuracies])
 
         # If this is the best perfomance at n_channels
         if performance_at_n_channels[len(sffs_subset) - 1] < current_performance:
@@ -1684,7 +1683,7 @@ def __sffs(
                 logger.debug("Added back a channel")
                 logger.debug("New subset: %s", new_channel_subset)
                 logger.debug("Accuracy: %s", accuracy)
-                logger.debug("Accuracies: %s", accuracies)
+                logger.debug("Accuracies: %s", [float(acc) for acc in accuracies])
 
                 current_performance = best_round_performance
 

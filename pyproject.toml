@@ -16,6 +16,8 @@ dependencies = [
 	"seaborn",
 	"wheel",
 	"pyriemann",
+	"imblearn",
+	"mne-lsl",
 ]
 
 [tool.setuptools.packages.find]
