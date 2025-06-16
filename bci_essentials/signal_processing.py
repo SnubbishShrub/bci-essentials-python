@@ -85,12 +85,15 @@ def bandpass(data, f_low, f_high, order, fsample):
         shape = (n_trials, n_channels, n_samples) or (n_channels, n_samples)
 
     """
-    Wn = [f_low / (fsample / 2), f_high / (fsample / 2)]
-    sos = signal.butter(order, Wn, btype="bandpass", output="sos")
+    if f_low == 0:
+        return data
+    else:
+        Wn = [f_low / (fsample / 2), f_high / (fsample / 2)]
+        sos = signal.butter(order, Wn, btype="bandpass", output="sos")
 
-    filtered_data = signal.sosfiltfilt(sos, data, padlen=0)
+        filtered_data = signal.sosfiltfilt(sos, data, padlen=0)
 
-    return filtered_data
+        return filtered_data
 
 
 @validate_filter_input
