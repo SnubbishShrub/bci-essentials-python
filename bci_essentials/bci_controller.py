@@ -728,7 +728,7 @@ class BciController:
 
     def __load_temp_epochs_if_available(self):
         """Load temp_epochs if available and valid.
-        
+
         Parameters
         ----------
         `None`
@@ -775,4 +775,3 @@ class BciController:
         # If there are epochs in the data tank, then train the classifier
         if len(self.__data_tank.labels) > 0:
             self.__update_and_train_classifier()
-

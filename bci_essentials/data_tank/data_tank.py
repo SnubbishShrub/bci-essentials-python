@@ -40,7 +40,6 @@ class DataTank:
         self.epochs = np.zeros((0, 0))
         self.labels = np.array([], dtype=str)
 
-
     def set_source_data(
         self, headset_string, fsample, n_channels, ch_types, ch_units, channel_labels
     ):
