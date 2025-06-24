@@ -38,7 +38,8 @@ class DataTank:
         # Keep track of how many epochs have been sent, so it is possible to only send new ones
         self.epochs_sent = 0
         self.epochs = np.zeros((0, 0))
-        self.labels = np.zeros((0), dtype=str)
+        self.labels = np.array([], dtype=str)
+
 
     def set_source_data(
         self, headset_string, fsample, n_channels, ch_types, ch_units, channel_labels

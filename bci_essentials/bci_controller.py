@@ -201,40 +201,7 @@ class BciController:
 
         # Check for a temp_epochs file
         if online:
-            self.temp_epochs = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), "temp_epochs.npz"
-            )
-            if os.path.exists(self.temp_epochs):
-                # If temp_epochs older than 10 minutes, delete it
-                if os.path.getmtime(self.temp_epochs) < (time.time() - 300):
-                    os.remove(self.temp_epochs)
-                    logger.info("Deleted old temp_epochs file.")
-
-                else:
-                    # Load the temp_epochs file
-                    with open(self.temp_epochs, "rb") as f:
-                        X = np.load(f)["X"]
-                        y = np.load(f)["y"]
-                        paradigm_str = np.load(f)["paradigm"].item()
-
-                    # If the paradigm is different, delete the file
-                    if self.__paradigm.paradigm_name != paradigm_str:
-                        logger.warning(
-                            "Paradigm in temp_epochs file does not match current paradigm. Deleting file."
-                        )
-                        os.remove(self.temp_epochs)
-
-                    # If the paradigm is the same, then add the epochs to the data tank
-                    else:
-                        # Add the epochs to the data tank
-                        logger.info("Loading epochs from temp_epochs file.")
-                        logger.info("X shape: %s", X.shape)
-                        logger.info("y shape: %s", y.shape)
-                        self.__data_tank.add_epochs(X, y)
-
-                        # If there are epochs in the data tank, then train the classifier
-                        if len(self.__data_tank.labels) > 0:
-                            self.__update_and_train_classifier()
+            self.__load_temp_epochs_if_available()
 
     def step(self):
         """Runs a single BciController processing step.
@@ -758,3 +725,54 @@ class BciController:
                 "Messenger not available (self._messenger is None). Prediction not sent: %s",
                 prediction,
             )
+
+    def __load_temp_epochs_if_available(self):
+        """Load temp_epochs if available and valid.
+        
+        Parameters
+        ----------
+        `None`
+
+        Returns
+        -------
+        `None`
+
+        """
+        self.temp_epochs = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "temp_epochs.npz"
+        )
+
+        if not os.path.exists(self.temp_epochs):
+            return
+
+        # If temp_epochs is older than 5 minutes, delete it
+        if os.path.getmtime(self.temp_epochs) < (time.time() - 300):
+            os.remove(self.temp_epochs)
+            logger.info("Deleted old temp_epochs file.")
+            return
+
+        # Load the temp_epochs file
+        with open(self.temp_epochs, "rb") as f:
+            npz = np.load(f, allow_pickle=True)
+            X = npz["X"]
+            y = npz["y"]
+            paradigm_str = npz["paradigm"].item()
+
+        # If the paradigm is different, delete the file
+        if self.__paradigm.paradigm_name != paradigm_str:
+            logger.warning(
+                "Paradigm in temp_epochs file does not match current paradigm. Deleting file."
+            )
+            os.remove(self.temp_epochs)
+            return
+
+        # If the paradigm is the same, then add the epochs to the data tank
+        logger.info("Loading epochs from temp_epochs file.")
+        logger.info("X shape: %s", X.shape)
+        logger.info("y shape: %s", y.shape)
+        self.__data_tank.add_epochs(X, y)
+
+        # If there are epochs in the data tank, then train the classifier
+        if len(self.__data_tank.labels) > 0:
+            self.__update_and_train_classifier()
+
