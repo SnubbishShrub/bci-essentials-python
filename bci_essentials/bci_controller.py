@@ -726,12 +726,14 @@ class BciController:
                 prediction,
             )
 
-    def __load_temp_epochs_if_available(self):
+    def __load_temp_epochs_if_available(self, reload_data_time: int = 300):
         """Load temp_epochs if available and valid.
 
         Parameters
         ----------
-        `None`
+        reload_data_time : int, *optional*
+            Time in seconds of the last temp_epochs file to reload the data from.
+            Default is `300` seconds (5 minutes).
 
         Returns
         -------
@@ -745,8 +747,8 @@ class BciController:
         if not os.path.exists(self.temp_epochs):
             return
 
-        # If temp_epochs is older than 5 minutes, delete it
-        if os.path.getmtime(self.temp_epochs) < (time.time() - 300):
+        # If temp_epochs is older than `reload_data_time`, delete it
+        if os.path.getmtime(self.temp_epochs) < (time.time() - reload_data_time):
             os.remove(self.temp_epochs)
             logger.info("Deleted old temp_epochs file.")
             return
