@@ -148,6 +148,7 @@ class BciController:
         online=True,
         train_complete=False,
         train_lock=False,
+        auto_save_epochs=True,
     ):
         """Configure processing loop.
 
@@ -180,6 +181,11 @@ class BciController:
             - `True`: The classifier is locked.
             - `False`: The classifier is not locked.
             - Default is `False`.
+        auto_save_epochs : bool, *optional*
+            Flag to indicate if labeled epochs should be automatically saved to a temp file so they can be reloaded if Bessy crashes.
+            - `True`: Epochs will be saved to a temp file.
+            - `False`: Epochs will not be saved to a temp file.
+
 
         Returns
         -------
@@ -189,6 +195,7 @@ class BciController:
         self.online = online
         self.train_complete = train_complete
         self.train_lock = train_lock
+        self.auto_save_epochs = auto_save_epochs
 
         # initialize the numbers of markers and trials to zero
         self.marker_count = 0
@@ -531,11 +538,13 @@ class BciController:
             self.fsample,
         )
 
+        sum_new_labeled_trials = np.sum(y != -1)
+
         # Add the epochs to the data tank
         self.__data_tank.add_epochs(X, y)
 
         # Save epochs to temp_epochs file
-        if self.online:
+        if self.auto_save_epochs and self.online and sum_new_labeled_trials > 0:
             paradigm_str = self.__paradigm.paradigm_name
 
             with open(self.temp_epochs, "wb") as f:
@@ -726,12 +735,14 @@ class BciController:
                 prediction,
             )
 
-    def __load_temp_epochs_if_available(self):
+    def __load_temp_epochs_if_available(self, reload_data_time: int = 300):
         """Load temp_epochs if available and valid.
 
         Parameters
         ----------
-        `None`
+        reload_data_time : int, *optional*
+            Time in seconds of the last temp_epochs file to reload the data from.
+            Default is `300` seconds (5 minutes).
 
         Returns
         -------
@@ -745,8 +756,8 @@ class BciController:
         if not os.path.exists(self.temp_epochs):
             return
 
-        # If temp_epochs is older than 5 minutes, delete it
-        if os.path.getmtime(self.temp_epochs) < (time.time() - 300):
+        # If temp_epochs is older than `reload_data_time`, delete it
+        if os.path.getmtime(self.temp_epochs) < (time.time() - reload_data_time):
             os.remove(self.temp_epochs)
             logger.info("Deleted old temp_epochs file.")
             return
