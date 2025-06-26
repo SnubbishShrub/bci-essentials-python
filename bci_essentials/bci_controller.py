@@ -148,6 +148,7 @@ class BciController:
         online=True,
         train_complete=False,
         train_lock=False,
+        auto_save_epochs=True,
     ):
         """Configure processing loop.
 
@@ -180,6 +181,11 @@ class BciController:
             - `True`: The classifier is locked.
             - `False`: The classifier is not locked.
             - Default is `False`.
+        auto_save_epochs : bool, *optional*
+            Flag to indicate if labeled epochs should be automatically saved to a temp file so they can be reloaded if Bessy crashes.
+            - `True`: Epochs will be saved to a temp file.
+            - `False`: Epochs will not be saved to a temp file.
+
 
         Returns
         -------
@@ -537,7 +543,7 @@ class BciController:
         self.__data_tank.add_epochs(X, y)
 
         # Save epochs to temp_epochs file
-        if self.online and sum_new_labeled_trials > 0:
+        if self.auto_save_epochs and self.online and sum_new_labeled_trials > 0:
             paradigm_str = self.__paradigm.paradigm_name
 
             with open(self.temp_epochs, "wb") as f:
