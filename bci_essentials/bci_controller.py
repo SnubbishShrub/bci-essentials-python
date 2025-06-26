@@ -195,6 +195,7 @@ class BciController:
         self.online = online
         self.train_complete = train_complete
         self.train_lock = train_lock
+        self.auto_save_epochs = auto_save_epochs
 
         # initialize the numbers of markers and trials to zero
         self.marker_count = 0
