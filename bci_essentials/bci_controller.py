@@ -531,11 +531,13 @@ class BciController:
             self.fsample,
         )
 
+        sum_new_labeled_trials = np.sum(y != -1)
+
         # Add the epochs to the data tank
         self.__data_tank.add_epochs(X, y)
 
         # Save epochs to temp_epochs file
-        if self.online:
+        if self.online and sum_new_labeled_trials > 0:
             paradigm_str = self.__paradigm.paradigm_name
 
             with open(self.temp_epochs, "wb") as f:
