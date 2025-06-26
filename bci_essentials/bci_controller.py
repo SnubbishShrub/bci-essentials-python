@@ -18,6 +18,7 @@ Classes
 """
 
 import time
+import os
 import numpy as np
 from enum import Enum
 
@@ -147,6 +148,7 @@ class BciController:
         online=True,
         train_complete=False,
         train_lock=False,
+        auto_save_epochs=True,
     ):
         """Configure processing loop.
 
@@ -179,6 +181,11 @@ class BciController:
             - `True`: The classifier is locked.
             - `False`: The classifier is not locked.
             - Default is `False`.
+        auto_save_epochs : bool, *optional*
+            Flag to indicate if labeled epochs should be automatically saved to a temp file so they can be reloaded if Bessy crashes.
+            - `True`: Epochs will be saved to a temp file.
+            - `False`: Epochs will not be saved to a temp file.
+
 
         Returns
         -------
@@ -188,6 +195,7 @@ class BciController:
         self.online = online
         self.train_complete = train_complete
         self.train_lock = train_lock
+        self.auto_save_epochs = auto_save_epochs
 
         # initialize the numbers of markers and trials to zero
         self.marker_count = 0
@@ -197,6 +205,10 @@ class BciController:
         self.num_online_selections = 0
         self.online_selection_indices = []
         self.online_selections = []
+
+        # Check for a temp_epochs file
+        if online:
+            self.__load_temp_epochs_if_available()
 
     def step(self):
         """Runs a single BciController processing step.
@@ -526,8 +538,22 @@ class BciController:
             self.fsample,
         )
 
+        sum_new_labeled_trials = np.sum(y != -1)
+
         # Add the epochs to the data tank
         self.__data_tank.add_epochs(X, y)
+
+        # Save epochs to temp_epochs file
+        if self.auto_save_epochs and self.online and sum_new_labeled_trials > 0:
+            paradigm_str = self.__paradigm.paradigm_name
+
+            with open(self.temp_epochs, "wb") as f:
+                np.savez(
+                    f,
+                    X=self.__data_tank.epochs,
+                    y=self.__data_tank.labels,
+                    paradigm=paradigm_str,
+                )
 
         # If either there are no labels OR iterative training is on, then make a prediction
         if self.train_complete:
@@ -708,3 +734,55 @@ class BciController:
                 "Messenger not available (self._messenger is None). Prediction not sent: %s",
                 prediction,
             )
+
+    def __load_temp_epochs_if_available(self, reload_data_time: int = 300):
+        """Load temp_epochs if available and valid.
+
+        Parameters
+        ----------
+        reload_data_time : int, *optional*
+            Time in seconds of the last temp_epochs file to reload the data from.
+            Default is `300` seconds (5 minutes).
+
+        Returns
+        -------
+        `None`
+
+        """
+        self.temp_epochs = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "temp_epochs.npz"
+        )
+
+        if not os.path.exists(self.temp_epochs):
+            return
+
+        # If temp_epochs is older than `reload_data_time`, delete it
+        if os.path.getmtime(self.temp_epochs) < (time.time() - reload_data_time):
+            os.remove(self.temp_epochs)
+            logger.info("Deleted old temp_epochs file.")
+            return
+
+        # Load the temp_epochs file
+        with open(self.temp_epochs, "rb") as f:
+            npz = np.load(f, allow_pickle=True)
+            X = npz["X"]
+            y = npz["y"]
+            paradigm_str = npz["paradigm"].item()
+
+        # If the paradigm is different, delete the file
+        if self.__paradigm.paradigm_name != paradigm_str:
+            logger.warning(
+                "Paradigm in temp_epochs file does not match current paradigm. Deleting file."
+            )
+            os.remove(self.temp_epochs)
+            return
+
+        # If the paradigm is the same, then add the epochs to the data tank
+        logger.info("Loading epochs from temp_epochs file.")
+        logger.info("X shape: %s", X.shape)
+        logger.info("y shape: %s", y.shape)
+        self.__data_tank.add_epochs(X, y)
+
+        # If there are epochs in the data tank, then train the classifier
+        if len(self.__data_tank.labels) > 0:
+            self.__update_and_train_classifier()

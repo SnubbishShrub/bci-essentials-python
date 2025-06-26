@@ -49,6 +49,8 @@ class MiParadigm(Paradigm):
 
         self.buffer_time = buffer_time
 
+        self.paradigm_name = "MI"
+
     def get_eeg_start_and_end_times(self, markers, timestamps):
         """
         Get the start and end times of the EEG data based on the markers.
