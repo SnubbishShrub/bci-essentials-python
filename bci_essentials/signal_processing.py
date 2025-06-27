@@ -88,7 +88,7 @@ def bandpass(data, f_low, f_high, order, fsample):
     Wn = [f_low / (fsample / 2), f_high / (fsample / 2)]
     sos = signal.butter(order, Wn, btype="bandpass", output="sos")
 
-    filtered_data = signal.sosfiltfilt(sos, data, padlen=0)
+    filtered_data = signal.sosfiltfilt(sos, data)
 
     return filtered_data
 
@@ -127,7 +127,7 @@ def lowpass(data, f_cutoff, order, fsample):
     Wn = f_cutoff / (fsample / 2)
     sos = signal.butter(order, Wn, btype="lowpass", output="sos")
 
-    filtered_data = signal.sosfiltfilt(sos, data, padlen=0)
+    filtered_data = signal.sosfiltfilt(sos, data)
 
     return filtered_data
 
@@ -165,7 +165,7 @@ def highpass(data, f_cutoff, order, fsample):
     Wn = f_cutoff / (fsample / 2)
     sos = signal.butter(order, Wn, btype="highpass", output="sos")
 
-    filtered_data = signal.sosfiltfilt(sos, data, padlen=0)
+    filtered_data = signal.sosfiltfilt(sos, data)
 
     return filtered_data
 
@@ -203,7 +203,7 @@ def notch(data, f_notch, Q, fsample):
     """
 
     b, a = signal.iirnotch(f_notch, Q, fsample)
-    filtered_data = signal.filtfilt(b, a, data, padlen=0)
+    filtered_data = signal.filtfilt(b, a, data)
 
     return filtered_data
 
