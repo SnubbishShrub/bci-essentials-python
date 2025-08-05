@@ -335,9 +335,9 @@ class ErpRgClassifier(GenericClassifier):
             )  # njobs, output messages
 
             preds = channel_selection_results.best_preds
-            accuracy = channel_selection_results.best_accuracy
-            precision = channel_selection_results.best_precision
-            recall = channel_selection_results.best_recall
+            # accuracy = channel_selection_results.best_accuracy
+            # precision = channel_selection_results.best_precision
+            # recall = channel_selection_results.best_recall
 
             logger.info(
                 "The optimal subset is %s",
