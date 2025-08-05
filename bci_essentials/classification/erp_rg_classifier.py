@@ -183,6 +183,7 @@ class ErpRgClassifier(GenericClassifier):
             accuracy = []
             precision = []
             recall = []
+            cm_final = np.zeros((2, 2))
             fold_index = 0
 
             for train_idx, test_idx in cv.split(X, y):
@@ -289,8 +290,10 @@ class ErpRgClassifier(GenericClassifier):
                 precision.append(precision_score(y_test, training_preds))
                 recall.append(recall_score(y_test, training_preds))
 
-                cm = confusion_matrix(y_test, training_preds)
-                logger.info("Fold %s Confusion matrix:\n%s", fold_index, cm)
+                #Plot confusion matrix for each fold, sum together at the end.
+                cm_fold = confusion_matrix(y_test, training_preds)
+                cm_final = cm_final + cm_fold
+                logger.info("Fold %s Confusion matrix:\n%s", fold_index, cm_fold)
                 fold_index = fold_index + 1
 
             logger.info(
@@ -306,6 +309,10 @@ class ErpRgClassifier(GenericClassifier):
             logger.info(
                 "Recall [Mean +/- SD] = %.2f +/- %.2f", np.mean(recall), np.std(recall)
             )
+
+            #Total confusion matrix summed over all folds
+            logger.info("Total Confusion matrix summed over all folds:\n%s", cm_final)
+            self.cm = cm_final
 
             # Train final model with all available data
             logger.info("Fitting full training dataset")
@@ -358,9 +365,15 @@ class ErpRgClassifier(GenericClassifier):
             # accuracy = current_results.accuracy
             # precision = current_results.precision
             # recall = current_results.recall
+        
+        # If we need to report an offline confusion matrix, we will take all the ones reported.
+        cm = self.cm
+        self.offline_cm=cm
+        logger.info("Total Confusion matrix summed over all folds:\n%s", cm)
+
 
         if plot_cm:
-            cm = confusion_matrix(self.y, preds)
+            # cm_total = confusion_matrix(self.y, preds)
             ConfusionMatrixDisplay(cm).plot()
             plt.show()
 
