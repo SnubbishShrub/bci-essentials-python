@@ -43,7 +43,7 @@ class ErpRgClassifier(GenericClassifier):
 
     def set_p300_clf_settings(
         self,
-        n_splits=3,
+        n_splits=5,
         lico_expansion_factor=1,
         oversample_ratio=0,
         undersample_ratio=0,
@@ -57,7 +57,7 @@ class ErpRgClassifier(GenericClassifier):
         ----------
         n_splits : int, *optional*
             Number of folds for cross-validation.
-            - Default is `3`.
+            - Default is `5`.
         lico_expansion_factor : int, *optional*
             Linear Combination Oversampling expansion factor, which is the
             factor by which the number of ERPs in the training set will be
@@ -106,7 +106,6 @@ class ErpRgClassifier(GenericClassifier):
 
     def fit(
         self,
-        n_splits=2,
         plot_cm=False,
         plot_roc=False,
         lico_expansion_factor=1,
@@ -115,10 +114,6 @@ class ErpRgClassifier(GenericClassifier):
 
         Parameters
         ----------
-        n_splits : int, *optional*
-            Number of folds for cross validation.
-            E.g. how many parts the dataset is divided into and trained/validated.
-            - Default is `2`.
         plot_cm : bool, *optional*
             Whether to plot the confusion matrix during training.
             - Default is `False`.
@@ -144,7 +139,7 @@ class ErpRgClassifier(GenericClassifier):
 
         # Define the strategy for cross validation
         cv = StratifiedKFold(
-            n_splits=n_splits, shuffle=True, random_state=self.random_seed
+            n_splits=self.n_splits, shuffle=True, random_state=self.random_seed
         )
 
         # Init predictions to all false
@@ -184,6 +179,12 @@ class ErpRgClassifier(GenericClassifier):
                         The recall of the trained classification model.
 
             """
+
+            accuracy = []
+            precision = []
+            recall = []
+            fold_index = 0
+
             for train_idx, test_idx in cv.split(X, y):
                 y_train, y_test = y[train_idx], y[test_idx]
 
@@ -282,14 +283,25 @@ class ErpRgClassifier(GenericClassifier):
                 logger.debug("real = %s", real[0])
                 logger.debug("prediction = %s", prediction)
 
+                #Print out the accuracy and confusion matrix for each fold
+                training_preds = self.clf.predict(X_test)
+                accuracy.append(sum(training_preds == y_test) / len(training_preds))
+                precision.append(precision_score(y_test, training_preds))
+                recall.append(recall_score(y_test, training_preds))
+
+                cm = confusion_matrix(y_test, training_preds)
+                logger.info("Fold %s Confusion matrix:\n%s", fold_index, cm)
+                fold_index = fold_index + 1
+
+
+            logger.info("Accuracy [Mean +/- SD] = %.2f +/- %.2f", np.mean(accuracy), np.std(accuracy))  
+            logger.info("Precision [Mean +/- SD] = %.2f +/- %.2f", np.mean(precision), np.std(precision))
+            logger.info("Recall [Mean +/- SD] = %.2f +/- %.2f", np.mean(recall), np.std(recall))
+
             # Train final model with all available data
+            logger.info("Fitting full training dataset")
             self.clf.fit(X, y)
             model = self.clf
-
-            training_preds = self.clf.predict(X)
-            accuracy = sum(training_preds == self.y) / len(training_preds)
-            precision = precision_score(self.y, training_preds)
-            recall = recall_score(self.y, training_preds)
 
             return KernelResults(model, training_preds, accuracy, precision, recall)
 
@@ -338,26 +350,6 @@ class ErpRgClassifier(GenericClassifier):
             precision = current_results.precision
             recall = current_results.recall
 
-        # Log performance stats
-        # accuracy
-        accuracy = sum(preds == self.y) / len(preds)
-        self.offline_accuracy = accuracy
-        logger.info("Accuracy = %s", accuracy)
-
-        # precision
-        precision = precision_score(self.y, preds)
-        self.offline_precision = precision
-        logger.info("Precision = %s", precision)
-
-        # recall
-        recall = recall_score(self.y, preds)
-        self.offline_recall = recall
-        logger.info("Recall = %s", recall)
-
-        # confusion matrix in command line
-        cm = confusion_matrix(self.y, preds)
-        self.offline_cm = cm
-        logger.info("Confusion matrix:\n%s", cm)
 
         if plot_cm:
             cm = confusion_matrix(self.y, preds)
