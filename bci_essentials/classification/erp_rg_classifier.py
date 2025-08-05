@@ -369,7 +369,7 @@ class ErpRgClassifier(GenericClassifier):
         # If we need to report an offline confusion matrix, we will take all the ones reported.
         cm = self.cm
         self.offline_cm=cm
-        logger.info("Total Confusion matrix summed over all folds:\n%s", cm)
+        # logger.info("Total Confusion matrix summed over all folds:\n%s", cm)
 
 
         if plot_cm:
