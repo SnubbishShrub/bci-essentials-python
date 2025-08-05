@@ -283,7 +283,7 @@ class ErpRgClassifier(GenericClassifier):
                 logger.debug("real = %s", real[0])
                 logger.debug("prediction = %s", prediction)
 
-                #Print out the accuracy and confusion matrix for each fold
+                # Print out the accuracy and confusion matrix for each fold
                 training_preds = self.clf.predict(X_test)
                 accuracy.append(sum(training_preds == y_test) / len(training_preds))
                 precision.append(precision_score(y_test, training_preds))
@@ -293,10 +293,19 @@ class ErpRgClassifier(GenericClassifier):
                 logger.info("Fold %s Confusion matrix:\n%s", fold_index, cm)
                 fold_index = fold_index + 1
 
-
-            logger.info("Accuracy [Mean +/- SD] = %.2f +/- %.2f", np.mean(accuracy), np.std(accuracy))  
-            logger.info("Precision [Mean +/- SD] = %.2f +/- %.2f", np.mean(precision), np.std(precision))
-            logger.info("Recall [Mean +/- SD] = %.2f +/- %.2f", np.mean(recall), np.std(recall))
+            logger.info(
+                "Accuracy [Mean +/- SD] = %.2f +/- %.2f",
+                np.mean(accuracy),
+                np.std(accuracy),
+            )
+            logger.info(
+                "Precision [Mean +/- SD] = %.2f +/- %.2f",
+                np.mean(precision),
+                np.std(precision),
+            )
+            logger.info(
+                "Recall [Mean +/- SD] = %.2f +/- %.2f", np.mean(recall), np.std(recall)
+            )
 
             # Train final model with all available data
             logger.info("Fitting full training dataset")
@@ -349,7 +358,6 @@ class ErpRgClassifier(GenericClassifier):
             accuracy = current_results.accuracy
             precision = current_results.precision
             recall = current_results.recall
-
 
         if plot_cm:
             cm = confusion_matrix(self.y, preds)
