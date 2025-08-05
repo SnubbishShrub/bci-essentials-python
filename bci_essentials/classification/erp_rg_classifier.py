@@ -355,9 +355,9 @@ class ErpRgClassifier(GenericClassifier):
             current_results = __erp_rg_kernel(X, self.y)
             self.clf = current_results.model
             preds = current_results.preds
-            accuracy = current_results.accuracy
-            precision = current_results.precision
-            recall = current_results.recall
+            # accuracy = current_results.accuracy
+            # precision = current_results.precision
+            # recall = current_results.recall
 
         if plot_cm:
             cm = confusion_matrix(self.y, preds)
