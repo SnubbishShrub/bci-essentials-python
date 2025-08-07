@@ -127,7 +127,7 @@ class ErpSingleChannelClassifier(GenericClassifier):
         )
 
         # Init predictions to all false
-        preds = np.zeros(len(self.y))
+        cv_preds = np.zeros(len(self.y))
 
         #
         def __erp_single_channel_kernel(X, y):
@@ -153,8 +153,8 @@ class ErpSingleChannelClassifier(GenericClassifier):
                 KernelResults object containing the following attributes:
                     model : classifier
                         The trained classification model.
-                    preds : numpy.ndarray
-                        The predictions from the model.
+                    cv_preds : numpy.ndarray
+                        The predictions from the model using cross validation.
                         1D array with the same shape as `y`.
                     accuracy : float
                         The accuracy of the trained classification model.
@@ -249,7 +249,7 @@ class ErpSingleChannelClassifier(GenericClassifier):
                     y_train = y_train[remaining_ind]
 
                 self.clf.fit(X_train, y_train)
-                preds[test_idx] = self.clf.predict(X_test)
+                cv_preds[test_idx] = self.clf.predict(X_test)
                 predproba = self.clf.predict_proba(X_test)
 
                 # Use pred proba to show what would be predicted
@@ -268,12 +268,11 @@ class ErpSingleChannelClassifier(GenericClassifier):
             self.clf.fit(X, y)
             model = self.clf
 
-            training_preds = self.clf.predict(X)
-            accuracy = sum(training_preds == self.y) / len(training_preds)
-            precision = precision_score(self.y, training_preds)
-            recall = recall_score(self.y, training_preds)
+            accuracy = sum(cv_preds == self.y) / len(cv_preds)
+            precision = precision_score(self.y, cv_preds)
+            recall = recall_score(self.y, cv_preds)
 
-            return KernelResults(model, training_preds, accuracy, precision, recall)
+            return KernelResults(model, cv_preds, accuracy, precision, recall)
 
         # Check if channel selection is true
         if self.channel_selection_setup:

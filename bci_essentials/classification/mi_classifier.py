@@ -171,7 +171,7 @@ class MiClassifier(GenericClassifier):
         self.next_fit_trial = n_trials
 
         # Init predictions to all false
-        preds = np.zeros(n_trials)
+        cv_preds = np.zeros(n_trials)
 
         def __mi_kernel(subX, suby):
             """MI kernel.
@@ -191,8 +191,8 @@ class MiClassifier(GenericClassifier):
                 KernelResults object containing the following attributes:
                     model : classifier
                         The trained classification model.
-                    preds : numpy.ndarray
-                        The predictions from the model.
+                    cv_preds : numpy.ndarray
+                        The predictions from the model using cross validation.
                         1D array with the same shape as `suby`.
                     accuracy : float
                         The accuracy of the trained classification model.
@@ -212,18 +212,17 @@ class MiClassifier(GenericClassifier):
 
                 # fit the classsifier
                 self.clf.fit(X_train, y_train)
-                preds[test_idx] = self.clf.predict(X_test)
+                cv_preds[test_idx] = self.clf.predict(X_test)
 
             # Train final model with all available data
             self.clf.fit(subX, suby)
             model = self.clf
 
-            training_preds = self.clf.predict(subX)
-            accuracy = sum(training_preds == self.y) / len(training_preds)
-            precision = precision_score(self.y, training_preds, average="micro")
-            recall = recall_score(self.y, training_preds, average="micro")
+            accuracy = sum(cv_preds == self.y) / len(cv_preds)
+            precision = precision_score(self.y, cv_preds, average="micro")
+            recall = recall_score(self.y, cv_preds, average="micro")
 
-            return KernelResults(model, training_preds, accuracy, precision, recall)
+            return KernelResults(model, cv_preds, accuracy, precision, recall)
 
         # Check if channel selection is true
         if self.channel_selection_setup:
