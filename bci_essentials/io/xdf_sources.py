@@ -143,11 +143,20 @@ def load_xdf_stream(filepath: str, streamtype: str) -> tuple[list, list, list]:
         type = info["type"][0]
         if type == streamtype:
             try:
+                # Check if the stream is empty
+                if len(stream["time_series"]) == 0:
+                    logger.warning(
+                        "%s stream is empty, there may be multiple streams including ghost streams so maybe this is okay",
+                        streamtype,
+                    )
+                    continue
+
                 samples = stream["time_series"]
                 timestamps = stream["time_stamps"]
 
             except Exception:
                 logger.error("%s data not available", streamtype)
+
             break
 
     return (samples, timestamps, info)
