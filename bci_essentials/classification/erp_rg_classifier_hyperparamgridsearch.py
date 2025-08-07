@@ -153,13 +153,13 @@ class ErpRgClassifierHyperparamGridSearch(GenericClassifier):
         self.clf.fit(self.X, self.y)
 
         # Get predictions for final model
-        y_pred = self.clf.predict(self.X)
         y_pred_proba = self.clf.predict_proba(self.X)[:, 1]
 
-        # Calculate training metrics of final model
-        self.offline_accuracy = sum(y_pred == self.y) / len(self.y)
-        self.offline_precision = precision_score(self.y, y_pred)
-        self.offline_recall = recall_score(self.y, y_pred)
+        # Calculate estimate of training metrics of final model
+        # TODO: Implement proper training metrics calculation, using cross validation.
+        # self.offline_accuracy = sum(y_pred == self.y) / len(self.y)
+        # self.offline_precision = precision_score(self.y, y_pred)
+        # self.offline_recall = recall_score(self.y, y_pred)
 
         try:
             roc_auc = roc_auc_score(self.y, y_pred_proba)
@@ -168,7 +168,7 @@ class ErpRgClassifierHyperparamGridSearch(GenericClassifier):
             logger.warning(f"Could not calculate ROC AUC score: {e}")
 
         # Display training confusion matrix
-        self.offline_cm = confusion_matrix(self.y, y_pred)
+        # self.offline_cm = confusion_matrix(self.y, y_pred)
         if plot_cm:
             disp = ConfusionMatrixDisplay(confusion_matrix=self.offline_cm)
             disp.plot()
@@ -180,10 +180,14 @@ class ErpRgClassifierHyperparamGridSearch(GenericClassifier):
 
         # Log training metrics
         logger.info("Final model training performance metrics:")
-        logger.info(f"Accuracy: {self.offline_accuracy:0.3f}")
-        logger.info(f"Precision: {self.offline_precision:0.3f}")
-        logger.info(f"Recall: {self.offline_recall:0.3f}")
-        logger.info(f"Confusion Matrix:\n{self.offline_cm}")
+        logger.info(f"Accuracy: {self.offline_accuracy:0.3f} - MAY NOT BE ACCURATE")
+        logger.info(f"Precision: {self.offline_precision:0.3f} - MAY NOT BE ACCURATE")
+        logger.info(f"Recall: {self.offline_recall:0.3f} - MAY NOT BE ACCURATE")
+        logger.info(f"Confusion Matrix:\n{self.offline_cm} ")
+        logger.warning(
+            "Note: Training metrics may not be accurate due to the use of "
+            "cross-validation and resampling methods. Use with caution."
+        )
 
     def predict(self, X):
         """Predict the class of the data
@@ -283,6 +287,7 @@ class ErpRgClassifierHyperparamGridSearch(GenericClassifier):
             verbose=1,
             scoring=custom_scorer,
             refit=True,
+            return_train_score=True,
         )
 
         # Start grid search optimization
@@ -290,8 +295,23 @@ class ErpRgClassifierHyperparamGridSearch(GenericClassifier):
         grid_search.fit(self.X, self.y)
 
         # Get best parameters and score
+        logger.info("Grid search optimization completed.")
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
+
+        #Report training metrics: TODO: Verify this is the right way to calculate training metrics
+        self.offline_accuracy = grid_search.best_estimator_.score(self.X, self.y)
+        self.offline_cm = confusion_matrix(
+            self.y, grid_search.best_estimator_.predict(self.X)
+        )
+        self.offline_precision = precision_score(
+            self.y, grid_search.best_estimator_.predict(self.X)
+        )
+        self.offline_recall = recall_score(
+            self.y, grid_search.best_estimator_.predict(self.X)
+        )
+
+        
 
         # Update classifier with best parameters
         self.clf.set_params(**best_params)

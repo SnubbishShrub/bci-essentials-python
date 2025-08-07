@@ -78,7 +78,6 @@ class ErpSingleChannelClassifier(GenericClassifier):
 
     def fit(
         self,
-        n_splits=2,
         plot_cm=False,
         plot_roc=False,
         lico_expansion_factor=1,
@@ -87,10 +86,6 @@ class ErpSingleChannelClassifier(GenericClassifier):
 
         Parameters
         ----------
-        n_splits : int, *optional*
-            Number of folds for cross validation.
-            E.g. how many parts the dataset is divided into and trained/validated.
-            - Default is `2`.
         plot_cm : bool, *optional*
             Whether to plot the confusion matrix during training.
             - Default is `False`.
@@ -117,7 +112,7 @@ class ErpSingleChannelClassifier(GenericClassifier):
 
         # Define the strategy for cross validation
         cv = StratifiedKFold(
-            n_splits=n_splits, shuffle=True, random_state=self.random_seed
+            n_splits=self.n_splits, shuffle=True, random_state=self.random_seed
         )
 
         # Define the classifier
