@@ -109,7 +109,7 @@ class ErpRgClassifierHyperparamGridSearch(GenericClassifier):
         self.clf = Pipeline(steps)
 
         # Hyperparameters to be optimized
-        #TODO: Implement an extended nfilter set, dynamically based on the number of channels
+        # TODO: Implement an extended nfilter set, dynamically based on the number of channels
         # Example of dynamic nfilter set
         # n_channels = self.X.shape[1]
         # nfilter_set = list(range(2, n_channels+1))  # Example range from 2 to n_channels inclusive
@@ -304,7 +304,7 @@ class ErpRgClassifierHyperparamGridSearch(GenericClassifier):
         best_params = grid_search.best_params_
         best_score = grid_search.best_score_
 
-        #Report training metrics: TODO: Verify this is the right way to calculate training metrics
+        # Report training metrics: TODO: Verify this is the right way to calculate training metrics
         self.offline_accuracy = grid_search.best_estimator_.score(self.X, self.y)
         self.offline_cm = confusion_matrix(
             self.y, grid_search.best_estimator_.predict(self.X)
@@ -315,8 +315,6 @@ class ErpRgClassifierHyperparamGridSearch(GenericClassifier):
         self.offline_recall = recall_score(
             self.y, grid_search.best_estimator_.predict(self.X)
         )
-
-        
 
         # Update classifier with best parameters
         self.clf.set_params(**best_params)
