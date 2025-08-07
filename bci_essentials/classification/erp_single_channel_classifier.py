@@ -78,7 +78,6 @@ class ErpSingleChannelClassifier(GenericClassifier):
 
     def fit(
         self,
-        n_splits=2,
         plot_cm=False,
         plot_roc=False,
         lico_expansion_factor=1,
@@ -87,10 +86,6 @@ class ErpSingleChannelClassifier(GenericClassifier):
 
         Parameters
         ----------
-        n_splits : int, *optional*
-            Number of folds for cross validation.
-            E.g. how many parts the dataset is divided into and trained/validated.
-            - Default is `2`.
         plot_cm : bool, *optional*
             Whether to plot the confusion matrix during training.
             - Default is `False`.
@@ -117,7 +112,7 @@ class ErpSingleChannelClassifier(GenericClassifier):
 
         # Define the strategy for cross validation
         cv = StratifiedKFold(
-            n_splits=n_splits, shuffle=True, random_state=self.random_seed
+            n_splits=self.n_splits, shuffle=True, random_state=self.random_seed
         )
 
         # Define the classifier
@@ -127,7 +122,7 @@ class ErpSingleChannelClassifier(GenericClassifier):
         )
 
         # Init predictions to all false
-        preds = np.zeros(len(self.y))
+        cv_preds = np.zeros(len(self.y))
 
         #
         def __erp_single_channel_kernel(X, y):
@@ -153,8 +148,8 @@ class ErpSingleChannelClassifier(GenericClassifier):
                 KernelResults object containing the following attributes:
                     model : classifier
                         The trained classification model.
-                    preds : numpy.ndarray
-                        The predictions from the model.
+                    cv_preds : numpy.ndarray
+                        The predictions from the model using cross validation.
                         1D array with the same shape as `y`.
                     accuracy : float
                         The accuracy of the trained classification model.
@@ -249,7 +244,7 @@ class ErpSingleChannelClassifier(GenericClassifier):
                     y_train = y_train[remaining_ind]
 
                 self.clf.fit(X_train, y_train)
-                preds[test_idx] = self.clf.predict(X_test)
+                cv_preds[test_idx] = self.clf.predict(X_test)
                 predproba = self.clf.predict_proba(X_test)
 
                 # Use pred proba to show what would be predicted
@@ -268,12 +263,11 @@ class ErpSingleChannelClassifier(GenericClassifier):
             self.clf.fit(X, y)
             model = self.clf
 
-            training_preds = self.clf.predict(X)
-            accuracy = sum(training_preds == self.y) / len(training_preds)
-            precision = precision_score(self.y, training_preds)
-            recall = recall_score(self.y, training_preds)
+            accuracy = sum(cv_preds == self.y) / len(cv_preds)
+            precision = precision_score(self.y, cv_preds)
+            recall = recall_score(self.y, cv_preds)
 
-            return KernelResults(model, training_preds, accuracy, precision, recall)
+            return KernelResults(model, cv_preds, accuracy, precision, recall)
 
         # Check if channel selection is true
         if self.channel_selection_setup:
@@ -312,7 +306,7 @@ class ErpSingleChannelClassifier(GenericClassifier):
             logger.warning("Not doing channel selection")
             current_results = __erp_single_channel_kernel(self.X, self.y)
             self.clf = current_results.model
-            preds = current_results.preds
+            preds = current_results.cv_preds
             accuracy = current_results.accuracy
             precision = current_results.precision
             recall = current_results.recall

@@ -71,7 +71,7 @@ class SwitchMdmClassifier(GenericClassifier):
         """
         self.n_splits = n_splits
         self.cv = StratifiedKFold(
-            n_splits=n_splits, shuffle=True, random_state=random_seed
+            n_splits=self.n_splits, shuffle=True, random_state=random_seed
         )
         self.rebuild = rebuild
 

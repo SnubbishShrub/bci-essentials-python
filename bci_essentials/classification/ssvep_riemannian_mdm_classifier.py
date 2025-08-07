@@ -78,7 +78,7 @@ class SsvepRiemannianMdmClassifier(GenericClassifier):
         # Build the cross-validation split
         self.n_splits = n_splits
         self.cv = StratifiedKFold(
-            n_splits=n_splits, shuffle=True, random_state=random_seed
+            n_splits=self.n_splits, shuffle=True, random_state=random_seed
         )
 
         self.rebuild = True
@@ -210,7 +210,7 @@ class SsvepRiemannianMdmClassifier(GenericClassifier):
         self.next_fit_trial = n_trials
 
         # Init predictions to all false
-        preds = np.zeros(n_trials)
+        cv_preds = np.zeros(n_trials)
 
         def __ssvep_kernel(subX, suby):
             """SSVEP kernel.
@@ -230,8 +230,8 @@ class SsvepRiemannianMdmClassifier(GenericClassifier):
                 KernelResults object containing the following attributes:
                     model : classifier
                         The trained classification model.
-                    preds : numpy.ndarray
-                        The predictions from the model.
+                    cv_preds : numpy.ndarray
+                        The predictions from the model using cross validation.
                         1D array with the same shape as `suby`.
                     accuracy : float
                         The accuracy of the trained classification model.
@@ -268,7 +268,7 @@ class SsvepRiemannianMdmClassifier(GenericClassifier):
 
                 # fit the classsifier
                 self.clf.fit(X_train_super, y_train)
-                preds[test_idx] = self.clf.predict(X_test_super)
+                cv_preds[test_idx] = self.clf.predict(X_test_super)
 
             # Create super trial with all available data
             X_super = self.get_ssvep_supertrial(
@@ -284,12 +284,11 @@ class SsvepRiemannianMdmClassifier(GenericClassifier):
             self.clf.fit(X_super, suby)
             model = self.clf
 
-            training_preds = self.clf.predict(X_super)
-            accuracy = sum(training_preds == self.y) / len(training_preds)
-            precision = precision_score(self.y, training_preds, average="micro")
-            recall = recall_score(self.y, training_preds, average="micro")
+            accuracy = sum(cv_preds == self.y) / len(cv_preds)
+            precision = precision_score(self.y, cv_preds, average="micro")
+            recall = recall_score(self.y, cv_preds, average="micro")
 
-            return KernelResults(model, training_preds, accuracy, precision, recall)
+            return KernelResults(model, cv_preds, accuracy, precision, recall)
 
         # Check if channel selection is true
         if self.channel_selection_setup:
@@ -326,7 +325,7 @@ class SsvepRiemannianMdmClassifier(GenericClassifier):
             logger.warning("Not doing channel selection")
             current_results = __ssvep_kernel(subX, suby)
             self.clf = current_results.model
-            preds = current_results.preds
+            preds = current_results.cv_preds
             accuracy = current_results.accuracy
             precision = current_results.precision
             recall = current_results.recall
