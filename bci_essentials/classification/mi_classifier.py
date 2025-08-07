@@ -267,7 +267,7 @@ class MiClassifier(GenericClassifier):
 
             current_results = __mi_kernel(subX, suby)
             self.clf = current_results.model
-            preds = current_results.preds
+            preds = current_results.cv_preds
             accuracy = current_results.accuracy
             precision = current_results.precision
             recall = current_results.recall
