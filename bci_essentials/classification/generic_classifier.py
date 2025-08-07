@@ -44,8 +44,8 @@ class KernelResults:
     model : classifier
         The trained classification model.
 
-    preds : numpy.ndarray
-        The predictions from the model.
+    cv_preds : numpy.ndarray
+        The predictions from the model using cross-validation.
 
     accuracy : float
         The accuracy of the trained classification model.
@@ -58,7 +58,7 @@ class KernelResults:
     """
 
     model: Pipeline = field(default=None)
-    preds: np.ndarray = field(default_factory=np.ndarray)
+    cv_preds: np.ndarray = field(default_factory=np.ndarray)
     accuracy: float = field(default=0.0)
     precision: float = field(default=0.0)
     recall: float = field(default=0.0)
