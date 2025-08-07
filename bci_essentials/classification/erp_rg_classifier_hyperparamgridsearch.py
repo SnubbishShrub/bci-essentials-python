@@ -109,6 +109,11 @@ class ErpRgClassifierHyperparamGridSearch(GenericClassifier):
         self.clf = Pipeline(steps)
 
         # Hyperparameters to be optimized
+        #TODO: Implement an extended nfilter set, dynamically based on the number of channels
+        # Example of dynamic nfilter set
+        # n_channels = self.X.shape[1]
+        # nfilter_set = list(range(2, n_channels+1))  # Example range from 2 to n_channels inclusive
+        # Then set "xdawn__nfilter": nfilter_set in the param_grid below
         self.param_grid = {
             "xdawn__nfilter": [2, 3, 4],
             "xdawn__estimator": ["oas", "lwf"],
