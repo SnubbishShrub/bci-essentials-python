@@ -413,7 +413,7 @@ def __sfs(
     try:
         initial_results = kernel_func(X[:, sfs_subset, :], y)
         initial_model = initial_results.model
-        initial_preds = initial_results.preds
+        initial_preds = initial_results.cv_preds
         initial_accuracy = initial_results.accuracy
         initial_precision = initial_results.precision
         initial_recall = initial_results.recall
@@ -481,7 +481,7 @@ def __sfs(
         # Extract the outputs
         for output in outputs:
             models.append(output.model)
-            predictions.append(output.preds)
+            predictions.append(output.cv_preds)
             accuracies.append(output.accuracy)
             precisions.append(output.precision)
             recalls.append(output.recall)
@@ -692,7 +692,7 @@ def __sbs(
     # Get the performance of the initial subset
     initial_results = kernel_func(X[:, sbs_subset, :], y)
     initial_model = initial_results.model
-    initial_preds = initial_results.preds
+    initial_preds = initial_results.cv_preds
     initial_accuracy = initial_results.accuracy
     initial_precision = initial_results.precision
     initial_recall = initial_results.recall
@@ -763,7 +763,7 @@ def __sbs(
         # Extract the outputs
         for output in outputs:
             models.append(output.model)
-            predictions.append(output.preds)
+            predictions.append(output.cv_preds)
             accuracies.append(output.accuracy)
             precisions.append(output.precision)
             recalls.append(output.recall)
@@ -982,7 +982,7 @@ def __sbfs(
     try:
         initial_results = kernel_func(X[:, sbfs_subset, :], y)
         initial_model = initial_results.model
-        initial_preds = initial_results.preds
+        initial_preds = initial_results.cv_preds
         initial_accuracy = initial_results.accuracy
         initial_precision = initial_results.precision
         initial_recall = initial_results.recall
@@ -1062,7 +1062,7 @@ def __sbfs(
         # Extract the outputs
         for output in outputs:
             models.append(output.model)
-            predictions.append(output.preds)
+            predictions.append(output.cv_preds)
             accuracies.append(output.accuracy)
             precisions.append(output.precision)
             recalls.append(output.recall)
@@ -1195,7 +1195,7 @@ def __sbfs(
             # Extract the outputs
             for output in outputs:
                 models.append(output.model)
-                predictions.append(output.preds)
+                predictions.append(output.cv_preds)
                 accuracies.append(output.accuracy)
                 precisions.append(output.precision)
                 recalls.append(output.recall)
@@ -1439,7 +1439,7 @@ def __sffs(
     try:
         initial_results = kernel_func(X[:, sffs_subset, :], y)
         initial_model = initial_results.model
-        initial_preds = initial_results.preds
+        initial_preds = initial_results.cv_preds
         initial_accuracy = initial_results.accuracy
         initial_precision = initial_results.precision
         initial_recall = initial_results.recall
@@ -1514,7 +1514,7 @@ def __sffs(
         # Extract the outputs
         for output in outputs:
             models.append(output.model)
-            predictions.append(output.preds)
+            predictions.append(output.cv_preds)
             accuracies.append(output.accuracy)
             precisions.append(output.precision)
             recalls.append(output.recall)
@@ -1648,7 +1648,7 @@ def __sffs(
             # Extract the outputs
             for output in outputs:
                 models.append(output.model)
-                predictions.append(output.preds)
+                predictions.append(output.cv_preds)
                 accuracies.append(output.accuracy)
                 precisions.append(output.precision)
                 recalls.append(output.recall)
