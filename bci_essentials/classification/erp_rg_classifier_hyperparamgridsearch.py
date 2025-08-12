@@ -294,17 +294,19 @@ class ErpRgClassifierHyperparamGridSearch(GenericClassifier):
 
     def __calculate_training_metrics(self):
         """Calculate proper training metrics using cross-validation with optimized hyperparameters.
-        
-        This method performs cross-validation with the optimized hyperparameters to get 
+
+        This method performs cross-validation with the optimized hyperparameters to get
         unbiased estimates of the training performance metrics.
-        
+
         Returns
         -------
         None
             Sets the offline metrics (accuracy, precision, recall, confusion matrix).
         """
-        logger.info("Calculating training metrics using cross-validation with optimized hyperparameters")
-        
+        logger.info(
+            "Calculating training metrics using cross-validation with optimized hyperparameters"
+        )
+
         # Define the strategy for cross validation
         cv = StratifiedKFold(
             n_splits=self.n_splits, shuffle=True, random_state=self.random_seed
@@ -317,21 +319,21 @@ class ErpRgClassifierHyperparamGridSearch(GenericClassifier):
         for train_idx, test_idx in cv.split(self.X, self.y):
             X_train, X_test = self.X[train_idx], self.X[test_idx]
             y_train, y_test = self.y[train_idx], self.y[test_idx]
-            
+
             # Create a copy of the classifier with optimized hyperparameters
             cv_clf = Pipeline(self.clf.steps)
             cv_clf.set_params(**self.clf.get_params())
-            
+
             # Fit and predict
             cv_clf.fit(X_train, y_train)
             cv_preds[test_idx] = cv_clf.predict(X_test)
-        
+
         # Calculate metrics from cross-validation predictions
         self.offline_accuracy = sum(cv_preds == self.y) / len(cv_preds)
         self.offline_precision = precision_score(self.y, cv_preds)
         self.offline_recall = recall_score(self.y, cv_preds)
         self.offline_cm = confusion_matrix(self.y, cv_preds)
-        
+
         logger.info("Training metrics calculation completed")
 
     def _valid_roc_auc(self, y_true, y_pred, **kwargs):
