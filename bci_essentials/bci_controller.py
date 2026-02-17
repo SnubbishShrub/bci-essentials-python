@@ -105,6 +105,14 @@ class BciController:
         self.ch_units = self.__eeg_source.channel_units
         self.channel_labels = self.__eeg_source.channel_labels
 
+
+        # Emily EGI fix
+        # Set default channel types if none
+        if self.ch_type is None:
+            logger.warning("Channel types are none, setting all to 'eeg'")
+            self.ch_type = ['eeg'] * self.n_channels
+
+
         self.__data_tank.set_source_data(
             self.headset_string,
             self.fsample,
@@ -753,7 +761,7 @@ class BciController:
             os.path.dirname(os.path.dirname(__file__)), "temp_epochs.npz"
         )
 
-        if not os.path.exists(self.temp_epochs):
+        if True or not os.path.exists(self.temp_epochs):
             return
 
         # If temp_epochs is older than `reload_data_time`, delete it
