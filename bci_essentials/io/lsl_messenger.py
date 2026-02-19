@@ -31,7 +31,8 @@ class LslMessenger(Messenger):
         self.__outlet.push_sample(["ping"])
 
     def marker_received(self, marker):
-        self.__outlet.push_sample(["marker received : {}".format(marker)])
+        # ignore
+        pass
 
     def prediction(self, prediction: Prediction):
         prediction_message = self.format_prediction_message(prediction)

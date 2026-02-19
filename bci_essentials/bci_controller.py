@@ -146,7 +146,7 @@ class BciController:
             MarkerTypes.UPDATE_CLASSIFIER.value: self.__update_and_train_classifier,
         }
 
-        self.ping_count = 0
+        self.pull_count = 0
         self.n_samples = 0
         self.time_units = ""
 
@@ -250,6 +250,13 @@ class BciController:
         # event markers in the event_marker_strings array
         self._pull_data_from_sources()
 
+        self.ping_timer -= 1
+        if self.ping_timer <= 0:
+            self.ping_timer = self.ping_interval
+            # If the outlet exists send a ping
+            if self._messenger is not None:
+                self._messenger.ping()
+
         # Process markers while there are unprocessed markers
         # REMOVE COMMENT: check if there is an available command marker, if not, break and wait for more data
         while len(self.marker_timestamps) > self.marker_count:
@@ -291,7 +298,7 @@ class BciController:
                 logger.info("Processed Marker: %s", current_step_marker)
                 self.marker_count += 1
 
-    def run(self, max_loops: int = 1000000):
+    def run(self, max_loops: int = 1000000, ping_interval: int = 100):
         """Runs BciController processing in a loop.
 
         See setup() for configuration of processing.
@@ -300,6 +307,8 @@ class BciController:
         ----------
         max_loops : int, *optional*
             Maximum number of loops to run, default is `1000000`.
+        ping_interval : int, *optional*
+            Number of steps between each messenger ping.
 
         Returns
         ------
@@ -315,6 +324,9 @@ class BciController:
         # Initialize the event marker buffer
         self.event_marker_buffer = []
         self.event_timestamp_buffer = []
+
+        self.ping_interval = ping_interval
+        self.ping_timer = ping_interval
 
         # start the main loop, stops after pulling new data, max_loops times
         while self.loops < max_loops:
@@ -352,11 +364,7 @@ class BciController:
         # Get new data from source, whatever it is
         self.__pull_marker_data_from_source()
         self.__pull_eeg_data_from_source()
-
-        # If the outlet exists send a ping
-        if self._messenger is not None:
-            self.ping_count += 1
-            self._messenger.ping()
+        self.pull_count += 1
 
     # 3. Private methods (double underscore)
     # 3a. Private methods for retrieving data from sources
