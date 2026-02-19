@@ -12,7 +12,6 @@ from sklearn.metrics import precision_score, recall_score
 from pyriemann.estimation import Covariances
 from pyriemann.classification import MDM
 
-
 # Instantiate a logger for the module at the default level of logging.INFO
 logger = Logger(name="test_channel_selection")
 
