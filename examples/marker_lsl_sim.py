@@ -85,7 +85,7 @@ fs_eeg = round(len(eeg_timestamps) / (time_stop - time_start))
 
 i = 0
 info = StreamInfo(
-    "MockMarker", "LSL_Marker_Strings", 1, fs_marker, "string", "mockmark1"
+    "MockMarker", "BCI_Essentials_Markers", 1, fs_marker, "string", "mockmark1"
 )
 outlet = StreamOutlet(info)
 

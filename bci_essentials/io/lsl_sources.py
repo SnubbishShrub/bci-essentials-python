@@ -28,7 +28,7 @@ class LslMarkerSource(MarkerSource):
         """
         try:
             if stream is None:
-                stream = discover_first_stream("LSL_Marker_Strings", timeout=timeout)
+                stream = discover_first_stream("BCI_Essentials_Markers", timeout=timeout)
             self._inlet = StreamInlet(
                 stream, max_buffered=buffer_size, processing_flags=["dejitter"]
             )

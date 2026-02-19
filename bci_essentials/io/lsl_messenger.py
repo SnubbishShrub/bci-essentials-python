@@ -15,7 +15,7 @@ class LslMessenger(Messenger):
         try:
             info = StreamInfo(
                 name="PythonResponse",
-                stype="BCI",
+                stype="BCI_Essentials_Predictions",
                 n_channels=1,
                 sfreq=0,  # 0 means irregular rate
                 dtype="string",
