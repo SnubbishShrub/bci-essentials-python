@@ -22,7 +22,6 @@ from pyriemann.estimation import XdawnCovariances
 from pyriemann.tangentspace import TangentSpace
 from pyriemann.channelselection import FlatChannelRemover
 
-
 # Import bci_essentials modules and methods
 from ..classification.generic_classifier import (
     GenericClassifier,

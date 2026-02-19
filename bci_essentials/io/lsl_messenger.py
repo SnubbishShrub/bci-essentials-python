@@ -52,7 +52,9 @@ class LslMessenger(Messenger):
 
         return prediction_message % (label_string, probabilities_string)
 
-    def format_probabilities_string(self, probabilities: list, precision: int = 4) -> str:
+    def format_probabilities_string(
+        self, probabilities: list, precision: int = 4
+    ) -> str:
         format_string = "%.{}f".format(precision)
 
         if type(probabilities[0]) is np.ndarray:
