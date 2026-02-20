@@ -44,7 +44,7 @@ class LslMessenger(Messenger):
 
         # One label, list of scalars
         if np.isscalar(probabilities[0]):
-            return "[%s]" % self.format_constituent_prediction_string(
+            return self.format_constituent_prediction_string(
                 labels[0], probabilities
             )
 
@@ -58,7 +58,7 @@ class LslMessenger(Messenger):
                 self.format_constituent_prediction_string(label, label_probabilities)
             )
 
-        return "[%s]" % ",".join(constituent_prediction_strings)
+        return ",".join(constituent_prediction_strings)
 
     def format_constituent_prediction_string(
         self,
