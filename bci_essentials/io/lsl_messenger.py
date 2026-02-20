@@ -39,28 +39,34 @@ class LslMessenger(Messenger):
         self.__outlet.push_sample([prediction_message])
 
     def format_prediction_message(self, prediction: Prediction) -> str:
-        prediction_message = "%s:%s"
         labels = prediction.labels
         probabilities = prediction.probabilities
 
-        if len(labels) > 1:
-            probabilities = [np.average(x) for x in np.matrix_transpose(probabilities)]
-            labels = [int(np.argmax(probabilities))]
+        # One label, list of scalars
+        if np.isscalar(probabilities[0]):
+            return "[%s]" % self.format_constituent_prediction_string(
+                labels[0], probabilities
+            )
 
-        label_string = str(labels[0])
-        probabilities_string = self.format_probabilities_string(probabilities)
+        # One or more label, nested list of scalars
+        constituent_prediction_strings = []
+        for label_index in range(len(labels)):
+            label = int(labels[label_index])
+            label_probabilities = probabilities[label_index]
 
-        return prediction_message % (label_string, probabilities_string)
+            constituent_prediction_strings.append(
+                self.format_constituent_prediction_string(label, label_probabilities)
+            )
 
-    def format_probabilities_string(
-        self, probabilities: list, precision: int = 4
+        return "[%s]" % ",".join(constituent_prediction_strings)
+
+    def format_constituent_prediction_string(
+        self,
+        label: int,
+        probabilities: list | np.ndarray,
+        probability_precision: int = 4,
     ) -> str:
-        format_string = "%.{}f".format(precision)
+        probability_format = "%.{}f".format(probability_precision)
+        probabilities_string = " ".join([probability_format % p for p in probabilities])
 
-        if type(probabilities[0]) is np.ndarray:
-            probabilities = probabilities[0]
-
-        if len(probabilities) == 1:
-            return format_string % probabilities[0]
-        else:
-            return "[%s]" % " ".join([format_string % p for p in probabilities])
+        return "%s:[%s]" % (str(label), probabilities_string)
