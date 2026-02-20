@@ -291,7 +291,7 @@ class BciController:
                 self.marker_count += 1
 
         self.step_count += 1
-        if self.step_count % 100 == 0:
+        if self.step_count % self.ping_interval == 0:
             if self._messenger is not None:
                 self._messenger.ping()
 
