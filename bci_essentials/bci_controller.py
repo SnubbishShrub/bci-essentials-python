@@ -105,6 +105,12 @@ class BciController:
         self.ch_units = self.__eeg_source.channel_units
         self.channel_labels = self.__eeg_source.channel_labels
 
+        # Emily EGI fix
+        # Set default channel types if none
+        if self.ch_type is None:
+            logger.warning("Channel types are none, setting all to 'eeg'")
+            self.ch_type = ["eeg"] * self.n_channels
+
         self.__data_tank.set_source_data(
             self.headset_string,
             self.fsample,
@@ -138,7 +144,8 @@ class BciController:
             MarkerTypes.UPDATE_CLASSIFIER.value: self.__update_and_train_classifier,
         }
 
-        self.ping_count = 0
+        self.step_count = 0
+        self.ping_interval = 1000
         self.n_samples = 0
         self.time_units = ""
 
@@ -283,7 +290,12 @@ class BciController:
                 logger.info("Processed Marker: %s", current_step_marker)
                 self.marker_count += 1
 
-    def run(self, max_loops: int = 1000000):
+        self.step_count += 1
+        if self.step_count % self.ping_interval == 0:
+            if self._messenger is not None:
+                self._messenger.ping()
+
+    def run(self, max_loops: int = 1000000, ping_interval: int = 100):
         """Runs BciController processing in a loop.
 
         See setup() for configuration of processing.
@@ -292,6 +304,8 @@ class BciController:
         ----------
         max_loops : int, *optional*
             Maximum number of loops to run, default is `1000000`.
+        ping_interval : int, *optional*
+            Number of steps between each messenger ping.
 
         Returns
         ------
@@ -303,6 +317,8 @@ class BciController:
             self.loops = max_loops - 1
         else:
             self.loops = 0
+
+        self.ping_interval = ping_interval
 
         # Initialize the event marker buffer
         self.event_marker_buffer = []
@@ -344,11 +360,6 @@ class BciController:
         # Get new data from source, whatever it is
         self.__pull_marker_data_from_source()
         self.__pull_eeg_data_from_source()
-
-        # If the outlet exists send a ping
-        if self._messenger is not None:
-            self.ping_count += 1
-            self._messenger.ping()
 
     # 3. Private methods (double underscore)
     # 3a. Private methods for retrieving data from sources

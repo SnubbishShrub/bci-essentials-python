@@ -11,15 +11,17 @@ __all__ = ["XdfMarkerSource", "XdfEegSource"]
 
 
 class XdfMarkerSource(MarkerSource):
-    def __init__(self, filename: str):
+    def __init__(self, filename: str, stream_type: str = "LSL_Marker_Strings"):
         """Create a MarkerSource object that obtains markers from an XDF file.
 
         Parameters
         ----------
         filename : str
             The full name of file, including path.  If file isn't found, an Exception is raised.
+        stream_type : str
+            The type identifier of the target stream. Use "BCI_Essentials_Markers" for newer recordings.
         """
-        samples, timestamps, info = load_xdf_stream(filename, "LSL_Marker_Strings")
+        samples, timestamps, info = load_xdf_stream(filename, stream_type)
         self.__samples = samples
         self.__timestamps = timestamps
         self.__info = info

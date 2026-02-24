@@ -13,7 +13,7 @@ from sklearn.metrics import confusion_matrix, precision_score, recall_score
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from pyriemann.preprocessing import Whitening
 from pyriemann.estimation import Covariances
-from pyriemann.classification import MDM, TSclassifier
+from pyriemann.classification import MDM, TSClassifier
 from pyriemann.channelselection import FlatChannelRemover
 
 # Import bci_essentials modules and methods
@@ -106,7 +106,7 @@ class MiClassifier(GenericClassifier):
 
         # Tangent Space Logistic Regression
         elif type == "TS":
-            ts = TSclassifier()
+            ts = TSClassifier()
             self.clf_model = Pipeline([("Tangent Space", ts)])
             self.clf = Pipeline([("Tangent Space", ts)])
 

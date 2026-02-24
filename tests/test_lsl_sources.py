@@ -17,12 +17,12 @@ class TestLslSourceTimeouts(unittest.TestCase):
 
 class TestLslMarkerSource(unittest.TestCase):
     def setUp(self) -> None:
-        self.sender = LslSender("LSL_Marker_Strings", 1)
+        self.sender = LslSender("BCI_Essentials_Markers", 1)
         time.sleep(0.5)  # Sleep for a bit to ensure the outlet is ready
         self.source = LslMarkerSource()
 
     def test_marker_name(self):
-        self.assertEqual(self.source.name, "LSL Test LSL_Marker_Strings")
+        self.assertEqual(self.source.name, "LSL Test BCI_Essentials_Markers")
 
     # def test_get_marker(self):
     #     self.sender.mark()
@@ -86,7 +86,7 @@ class LslSender:
         Parameters
         ----------
         streamtype : str
-            The type of the stream, e.g., "EEG" or "LSL_Marker_Strings".
+            The type of the stream, e.g., "EEG" or "BCI_Essentials_Markers".
         channels : int
             The number of channels in the stream.
         rate : float, optional

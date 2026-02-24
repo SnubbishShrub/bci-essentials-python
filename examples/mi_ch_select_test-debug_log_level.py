@@ -6,7 +6,6 @@ Test Motor Imagery (MI) classification offline using data from an existing strea
 # Stock libraries
 import os
 
-
 # bci_essentials
 from bci_essentials.io.xdf_sources import XdfEegSource, XdfMarkerSource
 from bci_essentials.bci_controller import BciController

@@ -16,6 +16,7 @@ Created on Wed Apr 21 10:26:44 2021
 
 @author: brianirvine
 """
+
 import sys
 import time
 import datetime
@@ -85,7 +86,7 @@ fs_eeg = round(len(eeg_timestamps) / (time_stop - time_start))
 
 i = 0
 info = StreamInfo(
-    "MockMarker", "LSL_Marker_Strings", 1, fs_marker, "string", "mockmark1"
+    "MockMarker", "BCI_Essentials_Markers", 1, fs_marker, "string", "mockmark1"
 )
 outlet = StreamOutlet(info)
 

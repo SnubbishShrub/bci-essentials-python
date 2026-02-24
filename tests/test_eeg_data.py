@@ -40,7 +40,7 @@ class TestBciController(unittest.TestCase):
         )
         data.setup(online=False)
         data.run(max_loops=200)
-        self.assertEqual(self.messenger.ping_count, 1)
+        self.assertEqual(data.step_count, 1)
 
     def test_offline_single_step_runs_single_loop(self):
         data = BciController(
@@ -54,9 +54,9 @@ class TestBciController(unittest.TestCase):
         data.setup(online=False)
 
         data.step()
-        self.assertEqual(self.messenger.ping_count, 1)
+        self.assertEqual(data.step_count, 1)
         data.step()
-        self.assertEqual(self.messenger.ping_count, 2)
+        self.assertEqual(data.step_count, 2)
 
     # online
     def test_when_online_loop_continues_even_when_no_data(self):
@@ -70,7 +70,7 @@ class TestBciController(unittest.TestCase):
         )
         data.setup(online=True)
         data.run(max_loops=10)
-        self.assertEqual(self.messenger.ping_count, 10)
+        self.assertEqual(data.step_count, 10)
 
     def test_online_single_step_runs_single_loop(self):
         data = BciController(
@@ -84,9 +84,9 @@ class TestBciController(unittest.TestCase):
         data.setup(online=False)
 
         data.step()
-        self.assertEqual(self.messenger.ping_count, 1)
+        self.assertEqual(data.step_count, 1)
         data.step()
-        self.assertEqual(self.messenger.ping_count, 2)
+        self.assertEqual(data.step_count, 2)
 
     def test_step_does_not_wait_for_more_data(self):
         data_tank = DataTank()
@@ -132,7 +132,7 @@ class TestBciController(unittest.TestCase):
         data.run(max_loops=2)
 
         # if we didn't crash, sanity check that loops did happen
-        self.assertEqual(self.messenger.ping_count, 2)
+        self.assertEqual(data.step_count, 2)
 
     def test_when_online_and_invalid_eeg_then_loop_continues(self):
         data = BciController(
@@ -151,7 +151,7 @@ class TestBciController(unittest.TestCase):
         data.run(max_loops=2)
 
         # if we didn't crash, sanity check that loops did happen
-        self.assertEqual(self.messenger.ping_count, 2)
+        self.assertEqual(data.step_count, 2)
 
 
 # Placeholder to make BciController happy

@@ -22,7 +22,6 @@ from pyriemann.estimation import XdawnCovariances
 from pyriemann.tangentspace import TangentSpace
 from pyriemann.channelselection import FlatChannelRemover
 
-
 # Import bci_essentials modules and methods
 from ..classification.generic_classifier import (
     GenericClassifier,
@@ -381,9 +380,7 @@ class ErpRgClassifier(GenericClassifier):
         subset_X = self.get_subset(X, self.subset, self.channel_labels)
 
         # Get posterior probability for each target
-        posterior_prob = self.clf.predict_proba(subset_X)[:, 1]
+        posterior_probabilities = self.clf.predict_proba(subset_X)[:, 1]
+        label = [int(np.argmax(posterior_probabilities))]
 
-        label = [int(np.argmax(posterior_prob))]
-        probability = [np.max(posterior_prob)]
-
-        return Prediction(label, probability)
+        return Prediction(label, posterior_probabilities)
