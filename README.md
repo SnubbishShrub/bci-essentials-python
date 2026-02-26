@@ -7,7 +7,7 @@ These modules are specifically designed to be equivalent whether run offline or 
 The front end for this package can be found in [bci-essentials-unity](https://www.github.com/kirtonBCIlab/bci-essentials-unity)
 
 ## Getting Started
-- **[Wiki](https://github.com/kirtonBCIlab/bci-essentials-python/wiki)** – More detailed installation instructions and tutorials.
+- **[Wiki](https://docs.bci.games/bessy-python)** – More detailed installation instructions and tutorials.
 - **[API documentation](https://kirtonbcilab.github.io/APIdocs-for-bci-essentials-python)**
 
 ### Installation
@@ -34,7 +34,7 @@ python examples/mi_offline_test.py
 ## Online processing
 Online processing requires an EEG stream and a marker stream. These can both be simulated using eeg_lsl_sim.py and marker_lsl_sim.py.
 Real EEG streams come from a headset connected over LSL. Real marker streams come from the application in the Unity frontend.
-Once these streams are running, simply begin the backend processing script ( ie. mi_unity_backend.py, p300_unity_bakend.py, etc.)
+Once these streams are running, simply begin the backend processing script ( ie. mi_unity_backend.py, p300_unity_backend.py, etc.)
 It is recommended to save the EEG, marker, and response (created by the backend processing script) streams using 
 [Lab Recorder](https://github.com/labstreaminglayer/App-LabRecorder) for later offline processing.
 ```
@@ -43,7 +43,7 @@ python examples/mi_unity_backend.py
 
 ## Directory
 ### bci_essentials
-The main packge containing modules for BCI processing.
+The main package containing modules for BCI processing.
 - bci_controller.py         -   module for reading online/offline data, windowing, processing, and classifying EEG signals
 - classification.py   -   module containing relevant classifiers for bci_controller, classifiers can be extended to meet individual needs
 - signal_processing.py-   module containing functions for the processing of bci_controller
