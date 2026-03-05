@@ -1,3 +1,6 @@
+target_frequencies = [8.0, 10.0, 13.0, 17.0]
+
+
 from bci_essentials.io.lsl_sources import LslEegSource, LslMarkerSource
 from bci_essentials.io.lsl_messenger import LslMessenger
 from bci_essentials.bci_controller import BciController
@@ -24,10 +27,8 @@ test_ssvep = BciController(
 )
 
 # set train complete to true so that predictions will be allowed
-test_ssvep.train_complete = True
-
-classifier.target_freqs = [7.857143, 9.705882, 12.69231, 15, 18.33333, 22]
+classifier.set_ssvep_settings(eeg_source.fsample, target_frequencies)
+test_ssvep.setup(online=True, train_complete=True)
 
 # Run
-test_ssvep.setup(online=True)
 test_ssvep.run()

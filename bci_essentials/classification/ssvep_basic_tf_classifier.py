@@ -84,7 +84,9 @@ class SsvepBasicTrainFreeClassifier(GenericClassifier):
         f, Pxx = signal.welch(augmented_X, fs=self.sampling_freq, nperseg=n_samples)
 
         # Get a vote for each trial
-        prediction = np.zeros(n_trials)
+        labels = []
+        probabilities = []
+
         for trial in range(n_trials):
             # Get the frequency with the greatest PSD
             Pxx_of_f_bins = np.zeros(len(self.target_freqs))
@@ -94,6 +96,8 @@ class SsvepBasicTrainFreeClassifier(GenericClassifier):
 
                 Pxx_of_f_bins[i] = Pxx[trial][int(closest_freq_bin)]
 
-            prediction[trial] = np.argmax(Pxx_of_f_bins)
+            Pxx_total = np.sum(Pxx_of_f_bins)
+            probabilities.append(np.divide(Pxx_of_f_bins, Pxx_total))
+            labels.append(int(np.argmax(Pxx_of_f_bins) + 1))
 
-        return Prediction(labels=prediction)
+        return Prediction(labels, probabilities)
