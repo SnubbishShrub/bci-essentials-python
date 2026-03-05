@@ -9,7 +9,6 @@ from bci_essentials.classification.ssvep_basic_tf_classifier import (
     SsvepBasicTrainFreeClassifier,
 )
 
-
 target_frequencies = [8.0, 10.0, 13.0, 17.0]
 
 
