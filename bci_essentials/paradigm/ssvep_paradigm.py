@@ -14,7 +14,7 @@ class SsvepParadigm(Paradigm):
         self,
         filters=[5, 30],
         iterative_training=False,
-        live_update=False,
+        live_update=True,
         buffer_time=0.01,
     ):
         """
