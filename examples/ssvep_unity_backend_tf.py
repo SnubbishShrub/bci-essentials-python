@@ -1,5 +1,4 @@
-target_frequencies = [8.0, 10.0, 13.0, 17.0]
-
+# Note: must use 2 second epochs
 
 from bci_essentials.io.lsl_sources import LslEegSource, LslMarkerSource
 from bci_essentials.io.lsl_messenger import LslMessenger
@@ -9,6 +8,10 @@ from bci_essentials.paradigm.ssvep_paradigm import SsvepParadigm
 from bci_essentials.classification.ssvep_basic_tf_classifier import (
     SsvepBasicTrainFreeClassifier,
 )
+
+
+target_frequencies = [8.0, 10.0, 13.0, 17.0]
+
 
 # create LSL sources, these will block until the outlets are present
 eeg_source = LslEegSource()
