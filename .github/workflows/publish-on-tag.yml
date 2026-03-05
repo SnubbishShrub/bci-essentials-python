@@ -1,6 +1,6 @@
 # When a tag is pushed, this build will publish a release to the release repository
 
-name: Check development environment on pull request
+name: Publish release to PyPi
 
 on:
   push:
