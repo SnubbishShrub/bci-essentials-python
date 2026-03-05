@@ -11,20 +11,9 @@ The front end for this package can be found in [bci-essentials-unity](https://ww
 - **[API documentation](https://kirtonbcilab.github.io/APIdocs-for-bci-essentials-python)**
 
 ### Installation
-BCI Essentials requires Python 3.9 or later.
+BCI Essentials requires Python 3.9 or later.  To install for Windows, MacOS or Linux:
 
-To use the latest version, you must first clone the project repository:
-```sh
-git clone https://github.com/kirtonBCIlab/bci-essentials-python
 ```
-Then, from the `bci-essentials-python` directory, *with your virtual environment activated (optional)*, install the project as a package in editable mode:
-```sh
-cd bci-essentials-python
-pip install -e .
-```
-
-An outdated BCI Essentials library can also be installed with pip. This may take a few minutes.
-```sh
 pip install bci-essentials
 ```
 
