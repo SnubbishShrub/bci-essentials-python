@@ -9,7 +9,7 @@ from bci_essentials.classification.ssvep_basic_tf_classifier import (
     SsvepBasicTrainFreeClassifier,
 )
 
-target_frequencies = [8.0, 10.0, 13.0, 17.0]
+target_frequencies = [6.0, 7.5, 8.2, 10.0]
 
 
 # create LSL sources, these will block until the outlets are present
@@ -17,7 +17,7 @@ eeg_source = LslEegSource()
 marker_source = LslMarkerSource()
 messenger = LslMessenger()
 
-paradigm = SsvepParadigm()
+paradigm = SsvepParadigm(live_update=True)
 data_tank = DataTank()
 
 # Define the classifier

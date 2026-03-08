@@ -9,13 +9,13 @@ __all__ = ["LslMessenger"]
 class LslMessenger(Messenger):
     """A Messenger object for sending event messages to an LSL outlet."""
 
-    def __init__(self):
+    def __init__(self, suffix=""):
         """Create an LslMessenger object.
 
         If the LSL outlet cannot be created, an exception is raised."""
         try:
             info = StreamInfo(
-                name="PythonResponse",
+                name="PythonResponse" + suffix,
                 stype="BCI_Essentials_Predictions",
                 n_channels=1,
                 sfreq=0,  # 0 means irregular rate

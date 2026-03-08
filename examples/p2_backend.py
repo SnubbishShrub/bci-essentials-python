@@ -6,11 +6,17 @@ from bci_essentials.data_tank.data_tank import DataTank
 from bci_essentials.classification.ssvep_riemannian_mdm_classifier import (
     SsvepRiemannianMdmClassifier,
 )
+from mne_lsl.lsl import resolve_streams, StreamInfo
 
 # create LSL sources, these will block until the outlets are present
-eeg_source = LslEegSource()
-marker_source = LslMarkerSource()
-messenger = LslMessenger()
+eeg_streams = []
+marker_streams = []
+while (not eeg_streams or not marker_streams):
+    eeg_streams = resolve_streams(name="P2_EEG", timeout=2.0)
+    marker_streams = resolve_streams(name="BCIMarkerSender2")
+eeg_source = LslEegSource(stream=eeg_streams[0])
+marker_source = LslMarkerSource(stream=marker_streams[0])
+messenger = LslMessenger("2")
 
 paradigm = SsvepParadigm(live_update=True)
 data_tank = DataTank()
@@ -26,13 +32,15 @@ test_ssvep = BciController(
     classifier, eeg_source, marker_source, paradigm, data_tank, messenger
 )
 
-classifier.target_freqs = [7.857143, 9.705882, 12.69231, 15, 18.33333, 22]
+classifier.target_freqs = [8.0, 10.0, 13.0, 17.0]
 
 # # Channel Selection
 # initial_subset=[]
-# test_ssvep.classifier.setup_channel_selection(method = "SBFS", metric="accuracy", initial_channels = initial_subset,    # wrapper setup
-#                                 max_time= 999, min_channels=2, max_channels=14, performance_delta=0,      # stopping criterion
-#                                 n_jobs=-1)
+# test_ssvep.classifier.setup_channel_selection(
+#     method = "SBFS", metric="accuracy", initial_channels = initial_subset,    # wrapper setup
+#     max_time= 999, min_channels=2, max_channels=14, performance_delta=0,      # stopping criterion
+#     n_jobs=-1
+# )
 
 test_ssvep.setup(
     online=True,

@@ -764,7 +764,7 @@ class BciController:
             os.path.dirname(os.path.dirname(__file__)), "temp_epochs.npz"
         )
 
-        if not os.path.exists(self.temp_epochs):
+        if True or not os.path.exists(self.temp_epochs):
             return
 
         # If temp_epochs is older than `reload_data_time`, delete it

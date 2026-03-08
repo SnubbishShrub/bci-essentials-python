@@ -10,6 +10,7 @@ from bci_essentials.paradigm.mi_paradigm import MiParadigm
 from bci_essentials.bci_controller import BciController
 from bci_essentials.data_tank.data_tank import DataTank
 from bci_essentials.classification.mi_classifier import MiClassifier
+from bci_essentials.io.lsl_messenger import LslMessenger
 
 # Identify the file to simulate
 # Filename assumes the data is within a subfolder called "data" located
@@ -19,6 +20,9 @@ eeg_source = XdfEegSource(filename)
 marker_source = XdfMarkerSource(filename)
 paradigm = MiParadigm(live_update=True, iterative_training=True)
 data_tank = DataTank()
+
+messenger = LslMessenger()
+
 
 # Select a classifier
 classifier = MiClassifier()  # you can add a subset here
@@ -33,7 +37,7 @@ classifier.set_mi_classifier_settings(
 )
 
 # Initialize data object
-test_mi = BciController(classifier, eeg_source, marker_source, paradigm, data_tank)
+test_mi = BciController(classifier, eeg_source, marker_source, paradigm, data_tank, messenger)
 
 # Run main loop, this will do all of the classification for online or offline
 test_mi.setup(
